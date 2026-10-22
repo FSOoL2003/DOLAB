@@ -1,0 +1,20 @@
+{
+  "name": "dolab-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DOLAB — منصة إيجار وبيع فساتين المناسبات",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "multer": "^2.0.1",
+    "pg": "^8.13.1"
+  }
+}

@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لوحة التحكم · دولاب</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#141210">
+<link rel="icon" href="/favicon.ico?v=2" sizes="48x48">
+<link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600&family=Cormorant+Garamond:wght@600&display=swap">
+<style>
+:root {
+  --bg: #FAF8F5; --surface: #FFFFFF; --tile: #F3F1EE; --fg: #141210; --muted: #77716A; --line: #E8E4DE;
+  --gold: #A6813A; --gold-soft: #F6F0E4; --btn: #141210; --btn-fg: #FFFFFF; --danger: #A3242F; --ok: #2F6B4F;
+  --shadow: 0 24px 60px rgba(20, 18, 16, .18);
+  --f-body: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, system-ui, sans-serif;
+  --f-mark: "Cormorant Garamond", "Didot", "Times New Roman", serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F0E0D; --surface: #161513; --tile: #1F1D1A; --fg: #F2EEE7; --muted: #A39C92; --line: #2D2A26;
+    --gold: #D2B06C; --gold-soft: #2A2419; --btn: #F2EEE7; --btn-fg: #141210; --danger: #EE7C84; --ok: #7CC4A0;
+    --shadow: 0 24px 60px rgba(0, 0, 0, .55); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F0E0D; --surface: #161513; --tile: #1F1D1A; --fg: #F2EEE7; --muted: #A39C92; --line: #2D2A26;
+  --gold: #D2B06C; --gold-soft: #2A2419; --btn: #F2EEE7; --btn-fg: #141210; --danger: #EE7C84; --ok: #7CC4A0;
+  --shadow: 0 24px 60px rgba(0, 0, 0, .55); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 14.5px; line-height: 1.6; }
+[hidden] { display: none !important; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: inherit; }
+:focus-visible { outline: 1.5px solid var(--gold); outline-offset: 2px; }
+.wrap { max-width: 1280px; margin: 0 auto; padding-inline: 16px; }
+.num { font-variant-numeric: tabular-nums; }
+
+header.top { position: sticky; top: 0; z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); }
+header.top .wrap { display: flex; align-items: center; gap: 16px; padding-block: 12px; }
+.logo { font-family: var(--f-mark); font-weight: 600; font-size: 22px; letter-spacing: .3em; direction: ltr; text-decoration: none; }
+.crumb { color: var(--gold); font-size: 13px; letter-spacing: .08em; font-weight: 500; }
+.spacer { flex: 1; }
+.who { color: var(--muted); font-size: 13px; }
+
+.btn { border: 1px solid var(--line); background: var(--surface); color: var(--fg); padding: 8px 18px; border-radius: 999px; font-weight: 500; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease; }
+.btn:hover { border-color: var(--fg); }
+.btn.primary:hover { transform: translateY(-1px); box-shadow: 0 10px 26px -8px rgba(166, 129, 58, .55); }
+.btn.primary { background: var(--btn); color: var(--btn-fg); border-color: var(--btn); }
+.btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.btn.danger:hover { border-color: var(--danger); }
+.btn.sm { padding: 5px 12px; font-size: 12.5px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+nav.tabs { display: flex; gap: 26px; border-bottom: 1px solid var(--line); margin-top: 22px; overflow-x: auto; }
+nav.tabs button { border: 0; background: none; padding: 10px 0; color: var(--muted); font-size: 15px; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+nav.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--gold); font-weight: 500; }
+section.panel { padding-block: 24px 64px; display: grid; gap: 22px; }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); padding: 16px 18px; display: grid; gap: 2px; }
+.kpi .lbl { color: var(--muted); font-size: 12.5px; }
+.kpi .val { font-size: 30px; font-weight: 300; line-height: 1.25; }
+.kpi .sub { color: var(--muted); font-size: 12px; }
+.kpi .sub b { color: var(--ok); font-weight: 500; }
+
+.card { background: var(--surface); border: 1px solid var(--line); padding: 18px 20px; min-width: 0; }
+.card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 14px; }
+.card h2 { margin: 0; font-size: 16px; font-weight: 500; }
+.card .hint { color: var(--muted); font-size: 12.5px; margin: 2px 0 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 22px; }
+
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button { border: 0; background: none; padding: 6px 12px; font-size: 13px; color: var(--muted); }
+.seg button + button { border-inline-start: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--btn); color: var(--btn-fg); }
+
+/* bar chart */
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: 230px; direction: ltr; overflow: visible; }
+.chart .grid line { stroke: var(--line); stroke-width: 1; }
+.chart .axis text { fill: var(--muted); font-size: 11px; font-family: var(--f-body); font-variant-numeric: tabular-nums; }
+.chart .bar { fill: var(--gold); transition: opacity .15s; }
+.chart.hovering .bar { opacity: .35; }
+.chart.hovering .bar.on { opacity: 1; }
+.chart .hit { fill: transparent; }
+.tip { position: absolute; pointer-events: none; background: var(--btn); color: var(--btn-fg); font-size: 12.5px; padding: 6px 10px; white-space: nowrap; transform: translate(-50%, -100%); margin-top: -8px; box-shadow: var(--shadow); z-index: 2; }
+.tip b { font-weight: 600; font-variant-numeric: tabular-nums; }
+details.data { margin-top: 10px; font-size: 13px; }
+details.data summary { cursor: pointer; color: var(--muted); }
+
+/* horizontal bars */
+.hbars { display: grid; gap: 10px; }
+.hbar { display: grid; grid-template-columns: minmax(70px, 30%) 1fr auto; gap: 12px; align-items: center; font-size: 13.5px; }
+.hbar .track { height: 10px; background: var(--tile); border-radius: 0 4px 4px 0; overflow: hidden; }
+.hbar .fill { height: 100%; background: var(--gold); border-radius: 4px 0 0 4px; min-width: 2px; }
+.hbar .n { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 2ch; text-align: end; }
+
+/* tables */
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.search { border: 1px solid var(--line); background: var(--surface); padding: 8px 12px; min-width: 0; flex: 1 1 220px; max-width: 360px; }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { padding: 10px 12px; text-align: start; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: middle; }
+th { font-weight: 500; color: var(--muted); font-size: 12.5px; background: var(--tile); position: sticky; top: 0; }
+th.sortable { cursor: pointer; user-select: none; }
+th.sortable:hover { color: var(--fg); }
+th[aria-sort="ascending"]::after { content: " ↑"; color: var(--gold); }
+th[aria-sort="descending"]::after { content: " ↓"; color: var(--gold); }
+td.n, th.n { text-align: end; font-variant-numeric: tabular-nums; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr.click { cursor: pointer; }
+tbody tr.click:hover td { background: var(--gold-soft); }
+.u-name { font-weight: 500; }
+.u-mail { color: var(--muted); font-size: 12.5px; direction: ltr; unicode-bidi: isolate; }
+.thumb { width: 40px; height: 52px; object-fit: cover; background: var(--tile); display: block; }
+.thumb.empty { display: grid; place-items: center; color: var(--muted); font-size: 11px; }
+.badge { display: inline-block; font-size: 11.5px; padding: 1px 8px; border: 1px solid var(--line); color: var(--muted); }
+.badge.gold { border-color: var(--gold); color: var(--gold); }
+.badge.bad { border-color: var(--danger); color: var(--danger); }
+.badge.ok { border-color: var(--ok); color: var(--ok); }
+.row-actions { display: flex; gap: 6px; }
+.empty { color: var(--muted); padding: 28px; text-align: center; }
+
+/* user drawer */
+.overlay { position: fixed; inset: 0; z-index: 40; background: rgba(15, 14, 13, .55); display: flex; justify-content: flex-start; }
+.drawer { background: var(--bg); width: min(760px, 100%); height: 100%; overflow-y: auto; box-shadow: var(--shadow); padding: 22px 22px 48px; display: grid; gap: 18px; align-content: start; }
+.drawer-head { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+.drawer-head h2 { margin: 0; font-size: 22px; font-weight: 400; }
+.feed { display: grid; gap: 0; max-height: 340px; overflow-y: auto; }
+.feed div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.feed div:last-child { border-bottom: 0; }
+.feed time { color: var(--muted); white-space: nowrap; font-size: 12px; }
+
+/* fields editor */
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); padding: 4px 6px 4px 12px; font-size: 13.5px; }
+.chip i { width: 13px; height: 13px; border-radius: 50%; border: 1px solid var(--line); display: inline-block; }
+.chip button { border: 0; background: none; color: var(--muted); width: 22px; height: 22px; line-height: 1; font-size: 12px; }
+.chip button:hover { color: var(--danger); }
+.add-row { display: flex; gap: 8px; }
+.add-row input[type="text"] { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--surface); padding: 7px 10px; }
+.add-row input[type="color"] { width: 42px; height: 38px; padding: 2px; border: 1px solid var(--line); background: var(--surface); }
+.savebar { position: sticky; bottom: 0; background: var(--surface); border: 1px solid var(--gold); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; box-shadow: var(--shadow); }
+
+.gate { max-width: 460px; margin: 12vh auto; text-align: center; display: grid; gap: 14px; justify-items: center; padding: 0 16px; }
+.gate h1 { font-weight: 300; margin: 0; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--btn); color: var(--btn-fg); padding: 10px 20px; font-size: 13.5px; z-index: 60; box-shadow: var(--shadow); }
+@media (max-width: 600px) {
+  .who { display: none; }
+  .kpi .val { font-size: 25px; }
+  .card { padding: 14px; }
+  .hbar { grid-template-columns: minmax(64px, 34%) 1fr auto; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="logo" href="/">DOLAB</a>
+    <span class="crumb">لوحة التحكم</span>
+    <span class="spacer"></span>
+    <span class="who" id="who"></span>
+    <button class="btn" id="refreshBtn" type="button" hidden>تحديث</button>
+    <a class="btn" href="/">الموقع</a>
+  </div>
+</header>
+
+<div id="gate" class="gate" hidden></div>
+
+<main class="wrap" id="main" hidden>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="overview" aria-selected="true">نظرة عامة</button>
+    <button role="tab" data-tab="users" aria-selected="false">المستخدمون</button>
+    <button role="tab" data-tab="dresses" aria-selected="false">الإعلانات</button>
+    <button role="tab" data-tab="fields" aria-selected="false">الحقول</button>
+  </nav>
+  <section class="panel" id="tab-overview"></section>
+  <section class="panel" id="tab-users" hidden></section>
+  <section class="panel" id="tab-dresses" hidden></section>
+  <section class="panel" id="tab-fields" hidden></section>
+</main>
+
+<div class="overlay" id="drawerOv" hidden><div class="drawer" id="drawer"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  const $ = (s) => document.querySelector(s);
+  const nf = new Intl.NumberFormat("ar-SA-u-nu-latn");
+  const df = new Intl.DateTimeFormat("ar-SA-u-nu-latn-ca-gregory", { day: "numeric", month: "short", year: "numeric" });
+  const dshort = new Intl.DateTimeFormat("ar-SA-u-nu-latn-ca-gregory", { day: "numeric", month: "short" });
+  const rtf = new Intl.RelativeTimeFormat("ar-u-nu-latn", { numeric: "auto" });
+  const MODES = { rent: "إيجار", sale: "بيع", both: "إيجار وبيع" };
+  const EVENTS = { view: "فتح الإعلان", whatsapp: "ضغط واتساب", copy_phone: "نسخ الرقم" };
+
+  function h(tag, attrs, kids) {
+    const el = document.createElement(tag);
+    if (attrs) for (const k in attrs) {
+      const v = attrs[k];
+      if (v == null || v === false) continue;
+      if (k === "text") el.textContent = v;
+      else if (k === "class") el.className = v;
+      else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? "" : v);
+    }
+    for (const c of [].concat(kids == null ? [] : kids)) if (c != null && c !== false) el.append(c);
+    return el;
+  }
+  const svgEl = (tag, attrs) => {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  };
+  let toastT;
+  function toast(msg) {
+    const t = $("#toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 2600);
+  }
+  function ago(ms) {
+    if (!ms) return "—";
+    const s = (ms - Date.now()) / 1000, a = Math.abs(s);
+    if (a < 60) return "الآن";
+    if (a < 3600) return rtf.format(Math.round(s / 60), "minute");
+    if (a < 86400) return rtf.format(Math.round(s / 3600), "hour");
+    if (a < 86400 * 30) return rtf.format(Math.round(s / 86400), "day");
+    return df.format(ms);
+  }
+  const fmt = (n) => nf.format(n || 0);
+  const pct = (a, b) => (b ? Math.round((a / b) * 1000) / 10 : 0) + "%";
+
+  async function api(method, url, body) {
+    const opts = { method, credentials: "same-origin", headers: {} };
+    if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+    const res = await fetch(url, opts);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { const e = new Error(data.error || "http_" + res.status); e.code = data.error; e.status = res.status; throw e; }
+    return data;
+  }
+  function fail(e) {
+    if (e && e.status === 401) { showGate("انتهت الجلسة", "سجّل الدخول من جديد بحساب المشرف."); return; }
+    if (e && e.code === "admin_protected") { toast("لا يمكن تطبيق هذا على حساب مشرف."); return; }
+    toast("تعذّر تنفيذ الطلب، حاول مرة أخرى.");
+  }
+
+  // ---------- gate ----------
+  function showGate(title, msg) {
+    $("#main").hidden = true; $("#refreshBtn").hidden = true;
+    $("#gate").replaceChildren(h("h1", { text: title }), h("p", { text: msg }), h("a", { class: "btn primary", href: "/", text: "الذهاب إلى الموقع وتسجيل الدخول" }));
+    $("#gate").hidden = false;
+  }
+
+  // ---------- tabs ----------
+  const loaded = {};
+  let current = "overview";
+  function showTab(name, force) {
+    current = name;
+    document.querySelectorAll("nav.tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
+    document.querySelectorAll("section.panel").forEach((s) => (s.hidden = s.id !== "tab-" + name));
+    if (force || !loaded[name]) { loaded[name] = true; LOADERS[name](); }
+  }
+  document.querySelectorAll("nav.tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
+  $("#refreshBtn").addEventListener("click", () => { for (const k in loaded) loaded[k] = false; showTab(current, true); toast("تم التحديث"); });
+
+  const loading = (id) => $(id).replaceChildren(h("div", { class: "empty", text: "جارٍ التحميل…" }));
+
+  // ---------- overview ----------
+  const METRICS = [
+    ["visitors", "الزوار"], ["views", "مشاهدات الإعلانات"], ["contacts", "التواصل"], ["signups", "التسجيلات"], ["listings", "إعلانات جديدة"]
+  ];
+  let metric = "visitors", stats = null;
+
+  async function loadOverview() {
+    loading("#tab-overview");
+    try { stats = await api("GET", "/api/admin/stats"); } catch (e) { fail(e); return; }
+    renderOverview();
+  }
+  function kpi(label, val, sub) {
+    return h("div", { class: "kpi" }, [h("div", { class: "lbl", text: label }), h("div", { class: "val num", text: val }), sub ? h("div", { class: "sub" }, sub) : null]);
+  }
+  const week = (n) => [h("b", { class: "num", text: "+" + fmt(n) }), " آخر 7 أيام"];
+
+  function renderOverview() {
+    const t = stats.totals;
+    const kpis = h("div", { class: "kpis" }, [
+      kpi("المستخدمون", fmt(t.users), week(t.users7d)),
+      kpi("الإعلانات", fmt(t.dresses), week(t.dresses7d)),
+      kpi("زوار آخر 7 أيام", fmt(t.visitors7d), "إجمالي " + fmt(t.visitors) + " زائر"),
+      kpi("مشاهدات الإعلانات", fmt(t.views), week(t.views7d)),
+      kpi("طلبات التواصل", fmt(t.contacts), week(t.contacts7d)),
+      kpi("نسبة التواصل", pct(t.contacts, t.views), "من المشاهدات إلى تواصل")
+    ]);
+    const split = h("div", { class: "kpis" }, [
+      kpi("للإيجار", fmt(t.rent)), kpi("للبيع", fmt(t.sale)), kpi("محجوز / مُباع", fmt(t.unavailable)),
+      kpi("مخفية من الإدارة", fmt(t.hidden)), kpi("مستخدمون محظورون", fmt(t.banned))
+    ]);
+
+    const chartBox = h("div", { class: "chart" });
+    const seg = h("div", { class: "seg", role: "group", "aria-label": "المؤشر" }, METRICS.map(([k, label]) =>
+      h("button", { type: "button", "aria-pressed": String(k === metric), text: label, onclick: () => { metric = k; renderOverview(); } })));
+    const label = METRICS.find((m) => m[0] === metric)[1];
+    const total = stats.daily.reduce((s, d) => s + d[metric], 0);
+    const trend = h("div", { class: "card" }, [
+      h("div", { class: "card-head" }, [h("div", null, [h("h2", { text: label + " — آخر 30 يوماً" }), h("p", { class: "hint num", text: "المجموع " + fmt(total) })]), seg]),
+      chartBox,
+      dataTable(stats.daily, metric, label)
+    ]);
+
+    const lists = h("div", { class: "grid2" }, [
+      hbarCard("الإعلانات حسب المدينة", stats.cities),
+      hbarCard("الإعلانات حسب المناسبة", stats.occasions)
+    ]);
+
+    const top = h("div", { class: "card" }, [
+      h("div", { class: "card-head" }, [h("h2", { text: "أكثر الإعلانات مشاهدة" })]),
+      stats.top.length ? h("div", { class: "tbl-wrap" }, h("table", null, [
+        h("thead", null, h("tr", null, [h("th", { text: "" }), h("th", { text: "الفستان" }), h("th", { text: "صاحبه" }), h("th", { class: "n", text: "مشاهدات" }), h("th", { class: "n", text: "تواصل" }), h("th", { class: "n", text: "نسبة التواصل" })])),
+        h("tbody", null, stats.top.map((d) => h("tr", null, [
+          h("td", null, thumb(d.photo)), h("td", { text: d.title }), h("td", { text: d.owner_name }),
+          h("td", { class: "n", text: fmt(d.views) }), h("td", { class: "n", text: fmt(d.contacts) }), h("td", { class: "n", text: pct(d.contacts, d.views) })
+        ])))
+      ])) : h("div", { class: "empty", text: "لا توجد إعلانات بعد." })
+    ]);
+
+    $("#tab-overview").replaceChildren(kpis, trend, split, lists, top);
+    barChart(chartBox, stats.daily, metric, label);
+  }
+
+  function dataTable(days, key, label) {
+    return h("details", { class: "data" }, [
+      h("summary", { text: "عرض البيانات كجدول" }),
+      h("div", { class: "tbl-wrap", style: "margin-top:10px;max-height:280px;overflow-y:auto" }, h("table", null, [
+        h("thead", null, h("tr", null, [h("th", { text: "اليوم" }), h("th", { class: "n", text: label })])),
+        h("tbody", null, days.slice().reverse().map((d) => h("tr", null, [h("td", { text: df.format(new Date(d.day + "T12:00:00")) }), h("td", { class: "n", text: fmt(d[key]) })])))
+      ]))
+    ]);
+  }
+
+  function hbarCard(title, rows) {
+    const max = Math.max(1, ...rows.map((r) => r.n));
+    return h("div", { class: "card" }, [
+      h("div", { class: "card-head" }, [h("h2", { text: title })]),
+      rows.length ? h("div", { class: "hbars" }, rows.map((r) => h("div", { class: "hbar", title: r.label + ": " + fmt(r.n) }, [
+        h("span", { text: r.label }),
+        h("div", { class: "track" }, h("div", { class: "fill", style: "width:" + (r.n / max) * 100 + "%" })),
+        h("span", { class: "n", text: fmt(r.n) })
+      ]))) : h("div", { class: "empty", text: "لا توجد بيانات بعد." })
+    ]);
+  }
+
+  function niceMax(v) {
+    if (v <= 2) return 2;
+    const p = Math.pow(10, Math.floor(Math.log10(v)));
+    for (const m of [1, 2, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p;
+    return 10 * p;
+  }
+
+  // أعمدة يومية بلون واحد، مع تلميح عند المرور على كل يوم
+  function barChart(box, days, key, label) {
+    const W = Math.max(300, box.clientWidth), H = 230, L = 36, R = 6, T = 12, B = 26;
+    const max = niceMax(Math.max(0, ...days.map((d) => d[key])));
+    const n = days.length, cw = (W - L - R) / n, bw = Math.max(2, cw - 2);
+    const y = (v) => T + (H - T - B) * (1 - v / max);
+    const svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": label + " يومياً خلال آخر 30 يوماً" });
+    const grid = svgEl("g", { class: "grid" }), axis = svgEl("g", { class: "axis" }), bars = svgEl("g", {}), hits = svgEl("g", {});
+    for (const v of [0, max / 2, max]) {
+      grid.append(svgEl("line", { x1: L, x2: W - R, y1: y(v), y2: y(v) }));
+      const t = svgEl("text", { x: L - 8, y: y(v) + 4, "text-anchor": "end" }); t.textContent = fmt(v); axis.append(t);
+    }
+    const tip = h("div", { class: "tip", hidden: true });
+    const barEls = days.map((d, i) => {
+      const x = L + i * cw + (cw - bw) / 2, base = y(0), top = y(d[key]), hgt = base - top;
+      let el;
+      if (d[key] > 0) {
+        const r = Math.min(4, bw / 2, hgt);
+        el = svgEl("path", { class: "bar", d: "M" + x + "," + base + "V" + (top + r) + "Q" + x + "," + top + " " + (x + r) + "," + top + "H" + (x + bw - r) + "Q" + (x + bw) + "," + top + " " + (x + bw) + "," + (top + r) + "V" + base + "Z" });
+      } else {
+        el = svgEl("rect", { class: "bar", x, y: base - 1, width: bw, height: 1, opacity: 0.4 });
+      }
+      bars.append(el);
+      if ((n - 1 - i) % 7 === 0) {
+        const t = svgEl("text", { x: x + bw / 2, y: H - 8, "text-anchor": "middle" });
+        t.textContent = dshort.format(new Date(d.day + "T12:00:00")); axis.append(t);
+      }
+      const hit = svgEl("rect", { class: "hit", x: L + i * cw, y: T, width: cw, height: H - T - B + 4 });
+      const show = () => {
+        box.classList.add("hovering"); barEls.forEach((b, j) => b.classList.toggle("on", j === i));
+        tip.replaceChildren(df.format(new Date(d.day + "T12:00:00")) + " · ", h("b", { text: fmt(d[key]) }));
+        tip.hidden = false;
+        const scale = box.clientWidth / W;
+        tip.style.left = Math.min(box.clientWidth - 60, Math.max(60, (x + bw / 2) * scale)) + "px";
+        tip.style.top = Math.min(y(d[key]), H - B - 10) * scale + "px";
+      };
+      hit.addEventListener("mouseenter", show);
+      hit.addEventListener("touchstart", show, { passive: true });
+      hits.append(hit);
+      return el;
+    });
+    svg.addEventListener("mouseleave", () => { box.classList.remove("hovering"); tip.hidden = true; });
+    svg.append(grid, bars, axis, hits);
+    box.replaceChildren(svg, tip);
+  }
+  let resizeT;
+  addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (stats && current === "overview") renderOverview(); }, 150); });
+
+  function thumb(id) {
+    return id ? h("img", { class: "thumb", src: "/uploads/" + encodeURIComponent(id), alt: "", loading: "lazy" }) : h("div", { class: "thumb empty", text: "—" });
+  }
+
+  // ---------- sortable table helper ----------
+  function sortTable(cols, rows, sortState, onSort, rowFn) {
+    const sorted = rows.slice();
+    const col = cols.find((c) => c.key === sortState.key);
+    if (col) sorted.sort((a, b) => {
+      const va = col.val(a), vb = col.val(b);
+      const r = typeof va === "string" ? va.localeCompare(vb, "ar") : (va || 0) - (vb || 0);
+      return sortState.dir === "asc" ? r : -r;
+    });
+    return h("div", { class: "tbl-wrap" }, h("table", null, [
+      h("thead", null, h("tr", null, cols.map((c) => h("th", {
+        class: [c.num ? "n" : "", c.val ? "sortable" : ""].join(" ").trim() || null,
+        "aria-sort": c.key === sortState.key ? (sortState.dir === "asc" ? "ascending" : "descending") : null,
+        text: c.label,
+        onclick: c.val ? () => onSort(c.key) : null
+      })))),
+      h("tbody", null, sorted.length ? sorted.map(rowFn) : h("tr", null, h("td", { colspan: cols.length, class: "empty", text: "لا توجد نتائج." })))
+    ]));
+  }
+  function toggleSort(st, key) {
+    if (st.key === key) st.dir = st.dir === "asc" ? "desc" : "asc";
+    else { st.key = key; st.dir = "desc"; }
+  }
+
+  // ---------- users ----------
+  let users = [], userQ = "";
+  const userSort = { key: "createdAt", dir: "desc" };
+  const USER_COLS = [
+    { key: "name", label: "المستخدم", val: (u) => u.name },
+    { key: "createdAt", label: "التسجيل", val: (u) => u.createdAt },
+    { key: "lastSeenAt", label: "آخر ظهور", val: (u) => u.lastSeenAt },
+    { key: "dresses", label: "الإعلانات", num: true, val: (u) => u.dresses },
+    { key: "viewsReceived", label: "مشاهدات إعلاناته", num: true, val: (u) => u.viewsReceived },
+    { key: "contactsReceived", label: "تواصل على إعلاناته", num: true, val: (u) => u.contactsReceived },
+    { key: "viewsMade", label: "إعلانات فتحها", num: true, val: (u) => u.viewsMade },
+    { key: "contactsMade", label: "مرات تواصل", num: true, val: (u) => u.contactsMade },
+    { key: "status", label: "الحالة" }
+  ];
+  async function loadUsers() {
+    loading("#tab-users");
+    try { users = (await api("GET", "/api/admin/users")).users; } catch (e) { fail(e); return; }
+    const search = h("input", { class: "search", type: "search", placeholder: "بحث بالاسم أو الإيميل", "aria-label": "بحث", value: userQ });
+    const box = h("div");
+    const draw = () => {
+      const q = userQ.toLowerCase();
+      const rows = users.filter((u) => !q || (u.name + " " + u.email).toLowerCase().includes(q));
+      box.replaceChildren(sortTable(USER_COLS, rows, userSort, (k) => { toggleSort(userSort, k); draw(); }, (u) => h("tr", { class: "click", onclick: () => openUser(u.id) }, [
+        h("td", null, [h("div", { class: "u-name", text: u.name }), h("div", { class: "u-mail", text: u.email })]),
+        h("td", { text: df.format(u.createdAt) }),
+        h("td", { text: ago(u.lastSeenAt) }),
+        h("td", { class: "n", text: fmt(u.dresses) }),
+        h("td", { class: "n", text: fmt(u.viewsReceived) }),
+        h("td", { class: "n", text: fmt(u.contactsReceived) }),
+        h("td", { class: "n", text: fmt(u.viewsMade) }),
+        h("td", { class: "n", text: fmt(u.contactsMade) }),
+        h("td", null, statusBadge(u))
+      ])));
+    };
+    search.addEventListener("input", () => { userQ = search.value.trim(); draw(); });
+    draw();
+    $("#tab-users").replaceChildren(
+      h("div", { class: "toolbar" }, [search, h("span", { class: "hint num", style: "color:var(--muted);font-size:13px", text: fmt(users.length) + " مستخدم · اضغط على أي مستخدم لعرض تفاصيله ونقراته" })]),
+      box
+    );
+  }
+  function statusBadge(u) {
+    if (u.isAdmin) return h("span", { class: "badge gold", text: "مشرف" });
+    if (u.bannedAt) return h("span", { class: "badge bad", text: "محظور" });
+    return h("span", { class: "badge ok", text: "نشط" });
+  }
+
+  async function openUser(id) {
+    const drawer = $("#drawer");
+    drawer.replaceChildren(h("div", { class: "empty", text: "جارٍ التحميل…" }));
+    $("#drawerOv").hidden = false;
+    let d;
+    try { d = await api("GET", "/api/admin/users/" + encodeURIComponent(id)); } catch (e) { closeDrawer(); fail(e); return; }
+    const u = d.user;
+    const actions = u.isAdmin ? null : h("div", { class: "row-actions" }, [
+      h("button", { class: "btn", type: "button", text: u.bannedAt ? "إلغاء الحظر" : "حظر", onclick: async () => {
+        if (!u.bannedAt && !confirm("حظر " + u.name + "؟ سيُسجَّل خروجه وتختفي إعلاناته من الموقع.")) return;
+        try { await api("PATCH", "/api/admin/users/" + u.id, { banned: !u.bannedAt }); toast(u.bannedAt ? "تم إلغاء الحظر" : "تم الحظر"); invalidate(); openUser(u.id); loadUsers(); } catch (e) { fail(e); }
+      } }),
+      h("button", { class: "btn danger", type: "button", text: "حذف الحساب", onclick: async () => {
+        if (!confirm("حذف حساب " + u.name + " نهائياً مع كل إعلاناته وصوره؟ لا يمكن التراجع.")) return;
+        try { await api("DELETE", "/api/admin/users/" + u.id); toast("تم حذف الحساب"); closeDrawer(); invalidate(); loadUsers(); } catch (e) { fail(e); }
+      } })
+    ]);
+    const feed = (list, line) => list.length
+      ? h("div", { class: "feed" }, list.map((e) => h("div", null, [h("span", { text: line(e) }), h("time", { text: ago(e.at) })])))
+      : h("div", { class: "empty", text: "لا يوجد نشاط بعد." });
+
+    drawer.replaceChildren(
+      h("div", { class: "drawer-head" }, [
+        h("div", null, [h("h2", { text: u.name }), h("div", { class: "u-mail", text: u.email }), h("div", { style: "margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--muted)" }, [statusBadge(u), "سجّل " + df.format(u.createdAt), " · آخر ظهور " + ago(u.lastSeenAt)])]),
+        h("button", { class: "btn", type: "button", text: "إغلاق", onclick: closeDrawer })
+      ]),
+      h("div", { class: "kpis" }, [
+        kpi("الإعلانات", fmt(u.dresses)),
+        kpi("مشاهدات إعلاناته", fmt(u.viewsReceived)),
+        kpi("تواصل على إعلاناته", fmt(u.contactsReceived), pct(u.contactsReceived, u.viewsReceived) + " من المشاهدات"),
+        kpi("نقراته هو", fmt(u.viewsMade + u.contactsMade), fmt(u.viewsMade) + " فتح · " + fmt(u.contactsMade) + " تواصل")
+      ]),
+      actions,
+      h("div", { class: "card" }, [
+        h("div", { class: "card-head" }, [h("h2", { text: "إعلاناته" })]),
+        d.dresses.length ? h("div", { class: "tbl-wrap" }, h("table", null, [
+          h("thead", null, h("tr", null, [h("th", { text: "" }), h("th", { text: "الفستان" }), h("th", { class: "n", text: "مشاهدات" }), h("th", { class: "n", text: "تواصل" }), h("th", { text: "الحالة" })])),
+          h("tbody", null, d.dresses.map((x) => h("tr", null, [
+            h("td", null, thumb(x.photo)), h("td", null, [h("div", { text: x.title }), h("div", { class: "u-mail", style: "direction:rtl", text: MODES[x.mode] + " · " + df.format(x.createdAt) })]),
+            h("td", { class: "n", text: fmt(x.views) }), h("td", { class: "n", text: fmt(x.contacts) }),
+            h("td", null, dressBadge(x))
+          ])))
+        ])) : h("div", { class: "empty", text: "لم يضف إعلانات." })
+      ]),
+      h("div", { class: "grid2" }, [
+        h("div", { class: "card" }, [h("div", { class: "card-head" }, [h("div", null, [h("h2", { text: "نشاطه على الموقع" }), h("p", { class: "hint", text: "الإعلانات التي فتحها أو تواصل عليها" })])]),
+          feed(d.activity, (e) => EVENTS[e.type] + ": " + (e.title || "إعلان محذوف"))]),
+        h("div", { class: "card" }, [h("div", { class: "card-head" }, [h("div", null, [h("h2", { text: "التفاعل مع إعلاناته" }), h("p", { class: "hint", text: "من فتح إعلاناته أو تواصل معه" })])]),
+          feed(d.received, (e) => (e.actorName || "زائر") + " — " + EVENTS[e.type] + ": " + (e.title || "إعلان محذوف"))])
+      ])
+    );
+  }
+  function closeDrawer() { $("#drawerOv").hidden = true; }
+  $("#drawerOv").addEventListener("click", (e) => { if (e.target.id === "drawerOv") closeDrawer(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
+  function invalidate() { loaded.overview = false; loaded.dresses = false; }
+
+  // ---------- dresses ----------
+  let dresses = [], dressQ = "", dressFilter = "all";
+  const dressSort = { key: "createdAt", dir: "desc" };
+  const DRESS_COLS = [
+    { key: "photo", label: "" },
+    { key: "title", label: "الفستان", val: (d) => d.title },
+    { key: "owner", label: "صاحبه", val: (d) => d.ownerName },
+    { key: "mode", label: "النوع", val: (d) => d.mode },
+    { key: "price", label: "السعر (ر.س)", num: true, val: (d) => d.rent || d.sale },
+    { key: "views", label: "مشاهدات", num: true, val: (d) => d.views },
+    { key: "contacts", label: "تواصل", num: true, val: (d) => d.contacts },
+    { key: "createdAt", label: "التاريخ", val: (d) => d.createdAt },
+    { key: "status", label: "الحالة" },
+    { key: "actions", label: "" }
+  ];
+  function dressBadge(d) {
+    if (d.hidden) return h("span", { class: "badge bad", text: "مخفي" });
+    if (d.ownerBanned) return h("span", { class: "badge bad", text: "صاحبه محظور" });
+    if (d.status === "unavailable") return h("span", { class: "badge", text: d.mode === "sale" ? "مُباع" : "محجوز" });
+    return h("span", { class: "badge ok", text: "ظاهر" });
+  }
+  async function loadDressesTab() {
+    loading("#tab-dresses");
+    try { dresses = (await api("GET", "/api/admin/dresses")).dresses; } catch (e) { fail(e); return; }
+    const search = h("input", { class: "search", type: "search", placeholder: "بحث بالاسم أو المدينة أو صاحب الإعلان", "aria-label": "بحث", value: dressQ });
+    const FILTERS = [["all", "الكل"], ["visible", "ظاهرة"], ["hidden", "مخفية"], ["unavailable", "محجوزة / مُباعة"]];
+    const seg = h("div", { class: "seg", role: "group" }, FILTERS.map(([k, l]) => h("button", { type: "button", "aria-pressed": String(k === dressFilter), text: l, onclick: (e) => {
+      dressFilter = k; seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === e.currentTarget))); draw();
+    } })));
+    const box = h("div");
+    const draw = () => {
+      const q = dressQ.toLowerCase();
+      const rows = dresses.filter((d) => {
+        if (dressFilter === "visible" && (d.hidden || d.ownerBanned)) return false;
+        if (dressFilter === "hidden" && !d.hidden) return false;
+        if (dressFilter === "unavailable" && d.status !== "unavailable") return false;
+        return !q || [d.title, d.city, d.ownerName, d.ownerEmail, d.occasion, d.color].join(" ").toLowerCase().includes(q);
+      });
+      box.replaceChildren(sortTable(DRESS_COLS, rows, dressSort, (k) => { toggleSort(dressSort, k); draw(); }, (d) => h("tr", null, [
+        h("td", null, thumb(d.photo)),
+        h("td", null, [h("div", { class: "u-name", text: d.title }), h("div", { style: "color:var(--muted);font-size:12.5px", text: [d.size, d.occasion, d.city].join(" · ") })]),
+        h("td", null, h("a", { href: "#", text: d.ownerName, onclick: (e) => { e.preventDefault(); openUser(d.owner); } })),
+        h("td", { text: MODES[d.mode] }),
+        h("td", { class: "n", text: [d.rent ? fmt(d.rent) + " / ليلة" : "", d.sale ? fmt(d.sale) + " بيع" : ""].filter(Boolean).join(" · ") }),
+        h("td", { class: "n", text: fmt(d.views) }),
+        h("td", { class: "n", text: fmt(d.contacts) }),
+        h("td", { text: df.format(d.createdAt) }),
+        h("td", null, dressBadge(d)),
+        h("td", null, h("div", { class: "row-actions" }, [
+          h("button", { class: "btn sm", type: "button", text: d.hidden ? "إظهار" : "إخفاء", onclick: async () => {
+            try { await api("PATCH", "/api/admin/dresses/" + encodeURIComponent(d.id), { hidden: !d.hidden }); d.hidden = !d.hidden; toast(d.hidden ? "أُخفي الإعلان من الموقع" : "الإعلان ظاهر الآن"); loaded.overview = false; draw(); } catch (e) { fail(e); }
+          } }),
+          h("button", { class: "btn sm danger", type: "button", text: "حذف", onclick: async () => {
+            if (!confirm("حذف إعلان \"" + d.title + "\" نهائياً؟")) return;
+            try { await api("DELETE", "/api/dresses/" + encodeURIComponent(d.id)); dresses = dresses.filter((x) => x !== d); toast("تم حذف الإعلان"); loaded.overview = false; loaded.users = false; draw(); } catch (e) { fail(e); }
+          } })
+        ]))
+      ])));
+    };
+    search.addEventListener("input", () => { dressQ = search.value.trim(); draw(); });
+    draw();
+    $("#tab-dresses").replaceChildren(h("div", { class: "toolbar" }, [search, seg]), box);
+  }
+
+  // ---------- fields ----------
+  const FIELD_LABELS = [["sizes", "المقاسات"], ["occasions", "المناسبات"], ["conditions", "حالة الفستان"], ["cities", "المدن"]];
+  let catalog = null, dirty = false;
+  async function loadFields() {
+    loading("#tab-fields");
+    try { catalog = JSON.parse(JSON.stringify((await api("GET", "/api/catalog")).catalog)); } catch (e) { fail(e); return; }
+    dirty = false;
+    renderFields();
+  }
+  function markDirty() { dirty = true; renderFields(); }
+  function renderFields() {
+    const listCard = (key, title) => {
+      const input = h("input", { type: "text", maxlength: 40, placeholder: "إضافة قيمة جديدة", "aria-label": "إضافة إلى " + title });
+      const add = () => {
+        const v = input.value.trim();
+        if (!v) return;
+        if (catalog[key].includes(v)) { toast("موجودة مسبقاً"); return; }
+        catalog[key].push(v); markDirty();
+      };
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); add(); } });
+      return h("div", { class: "card" }, [
+        h("div", { class: "card-head" }, [h("h2", { text: title }), h("span", { class: "hint num", text: fmt(catalog[key].length) + " قيمة" })]),
+        h("div", { class: "chips" }, catalog[key].map((v, i) => h("span", { class: "chip" }, [v, h("button", { type: "button", "aria-label": "حذف " + v, text: "✕", onclick: () => {
+          if (catalog[key].length <= 1) { toast("لازم تبقى قيمة واحدة على الأقل"); return; }
+          catalog[key].splice(i, 1); markDirty();
+        } })]))),
+        h("div", { class: "add-row" }, [input, h("button", { class: "btn", type: "button", text: "إضافة", onclick: add })])
+      ]);
+    };
+    const cName = h("input", { type: "text", maxlength: 40, placeholder: "اسم اللون", "aria-label": "اسم اللون" });
+    const cHex = h("input", { type: "color", value: "#C9A44C", "aria-label": "درجة اللون" });
+    const addColor = () => {
+      const name = cName.value.trim();
+      if (!name) return;
+      if (catalog.colors.some((c) => c.name === name)) { toast("اللون موجود مسبقاً"); return; }
+      catalog.colors.push({ name, hex: cHex.value.toUpperCase() }); markDirty();
+    };
+    cName.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); addColor(); } });
+    const colors = h("div", { class: "card" }, [
+      h("div", { class: "card-head" }, [h("h2", { text: "الألوان" }), h("span", { class: "hint num", text: fmt(catalog.colors.length) + " لون" })]),
+      h("div", { class: "chips" }, catalog.colors.map((c, i) => h("span", { class: "chip" }, [h("i", { style: "background:" + c.hex }), c.name, h("button", { type: "button", "aria-label": "حذف " + c.name, text: "✕", onclick: () => {
+        if (catalog.colors.length <= 1) { toast("لازم يبقى لون واحد على الأقل"); return; }
+        catalog.colors.splice(i, 1); markDirty();
+      } })]))),
+      h("div", { class: "add-row" }, [cHex, cName, h("button", { class: "btn", type: "button", text: "إضافة", onclick: addColor })])
+    ]);
+    const save = h("button", { class: "btn primary", type: "button", text: "حفظ التغييرات", disabled: !dirty, onclick: async () => {
+      save.disabled = true;
+      try { catalog = (await api("PUT", "/api/admin/catalog", catalog)).catalog; dirty = false; toast("تم الحفظ، والتغييرات ظاهرة بالموقع الآن"); renderFields(); }
+      catch (e) { save.disabled = false; fail(e); }
+    } });
+    $("#tab-fields").replaceChildren(
+      h("p", { style: "margin:0;color:var(--muted);font-size:13.5px", text: "هذه القوائم تظهر في نموذج إضافة الفستان وفي فلاتر البحث. حذف قيمة لا يغيّر الإعلانات القديمة التي تستخدمها." }),
+      h("div", { class: "fields" }, [...FIELD_LABELS.map(([k, t]) => listCard(k, t)), colors]),
+      h("div", { class: "savebar" }, [
+        h("span", { style: "font-size:13.5px;color:" + (dirty ? "var(--gold)" : "var(--muted)"), text: dirty ? "عندك تغييرات غير محفوظة" : "كل التغييرات محفوظة" }),
+        h("div", { class: "row-actions" }, [dirty ? h("button", { class: "btn", type: "button", text: "تراجع", onclick: loadFields }) : null, save])
+      ])
+    );
+  }
+  addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+
+  const LOADERS = { overview: loadOverview, users: loadUsers, dresses: loadDressesTab, fields: loadFields };
+
+  // ---------- boot ----------
+  (async function boot() {
+    let me = null;
+    try { me = (await api("GET", "/api/auth/me")).user; } catch (e) {}
+    if (!me) return showGate("لوحة التحكم", "سجّل الدخول من الموقع بحساب المشرف أولاً، ثم ارجع لهذه الصفحة.");
+    if (!me.isAdmin) return showGate("غير مصرّح", "هذه الصفحة للمشرف فقط.");
+    $("#who").textContent = me.name;
+    $("#refreshBtn").hidden = false;
+    $("#main").hidden = false;
+    showTab("overview");
+  })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+# بدون دومين: SITE_ADDRESS=:80 (الموقع على http://IP)
+# مع دومين: SITE_ADDRESS=dolab.example.com وCaddy يصدر شهادة HTTPS تلقائياً
+{$SITE_ADDRESS} {
+	encode gzip
+	request_body {
+		max_size 10MB
+	}
+	reverse_proxy app:3000
+}
