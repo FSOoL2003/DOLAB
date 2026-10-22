@@ -23,6 +23,28 @@ app.use((req, res, next) => {
 
 app.get("/healthz", (req, res) => res.json({ ok: true }));
 
+// خريطة الموقع لمحركات البحث — آخر تحديث = آخر فستان أُضيف
+app.get("/sitemap.xml", async (req, res) => {
+  const { rows } = await pool.query("SELECT max(created_at) AS last FROM dresses WHERE NOT hidden");
+  const last = (rows[0].last || new Date()).toISOString().slice(0, 10);
+  const base = `${req.protocol}://${req.get("host")}`;
+  const url = (loc, lang) => `  <url>
+    <loc>${loc}</loc>
+    <lastmod>${last}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>${lang === "ar" ? "1.0" : "0.8"}</priority>
+    <xhtml:link rel="alternate" hreflang="ar" href="${base}/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="${base}/?lang=en"/>
+  </url>`;
+  res.type("application/xml").set("Cache-Control", "public, max-age=3600").send(
+    `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+${url(base + "/", "ar")}
+${url(base + "/?lang=en", "en")}
+</urlset>
+`);
+});
+
 // أسماء الصور عشوائية ولا تتغير، لذلك يمكن تخزينها مؤقتاً لمدة طويلة
 app.use("/uploads", express.static(config.uploadDir, { maxAge: "365d", immutable: true, index: false }));
 
