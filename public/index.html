@@ -296,6 +296,29 @@ a.btn:not(.primary) { color: var(--fg); }
 .sim-card .t { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sim-card:hover .t { color: var(--gold); }
 .sim-card .p { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* color map: saturation/brightness square + hue strip, live preview with the nearest named color */
+.cpick { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.cp-main { display: grid; gap: 12px; direction: ltr; }
+.cp-sv { position: relative; height: 170px; border-radius: 14px; cursor: crosshair; touch-action: none; background: linear-gradient(to top, #000, transparent), linear-gradient(to right, #FFF, hsl(var(--h, 0) 100% 50%)); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08); }
+.cp-sv:focus-visible { outline: 1.5px solid var(--gold); outline-offset: 3px; }
+.cp-knob { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; border: 3px solid #FFF; box-shadow: 0 0 0 1px rgba(0, 0, 0, .25), 0 2px 8px rgba(0, 0, 0, .3); pointer-events: none; }
+.cp-hue { -webkit-appearance: none; appearance: none; width: 100%; height: 14px; border-radius: 999px; margin: 0; cursor: pointer; background: linear-gradient(to right, #F00, #FF0, #0F0, #0FF, #00F, #F0F, #F00); }
+.cp-hue::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: hsl(var(--h, 0) 100% 50%); border: 3px solid #FFF; box-shadow: 0 0 0 1px rgba(0, 0, 0, .25), 0 2px 8px rgba(0, 0, 0, .3); }
+.cp-hue::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: hsl(var(--h, 0) 100% 50%); border: 3px solid #FFF; box-shadow: 0 0 0 1px rgba(0, 0, 0, .25); }
+.cp-side { display: grid; gap: 10px; align-content: start; }
+.cp-out { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; }
+.cp-swatch { width: 52px; height: 52px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); transition: background-color .15s ease; }
+.cp-swatch.multi { background: conic-gradient(#B3202E, #E8A2B8, #C9A44C, #2F6B4F, #2F4E8C, #6B3F8C, #B3202E) !important; }
+.cp-label { font-size: 12px; color: var(--muted); font-weight: 400; }
+.cp-name { font-size: 16px; font-weight: 500; line-height: 1.3; }
+.cp-hex { font-size: 12px; color: var(--muted); direction: ltr; text-align: start; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+.cp-presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.cp-presets button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line); padding: 0; transition: transform .2s ease, box-shadow .2s ease; }
+.cp-presets button:hover { transform: scale(1.12); }
+.cp-presets button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--gold); }
+.cp-presets button.multi { background: conic-gradient(#B3202E, #E8A2B8, #C9A44C, #2F6B4F, #2F4E8C, #6B3F8C, #B3202E); }
+@media (max-width: 600px) { .cpick { grid-template-columns: minmax(0, 1fr); } .cp-sv { height: 150px; } }
+
 /* English (left-to-right): mirror the few physical positions */
 html[dir="ltr"] body { direction: ltr; }
 [dir="ltr"] .hero-inner { grid-template-columns: minmax(0, 1fr) minmax(0, 34%); }
@@ -511,7 +534,24 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
 
           <fieldset>
             <legend data-i18n="spec.color">اللون</legend>
-            <div class="choices swatches" id="f-color"></div>
+            <div class="cpick">
+              <div class="cp-main">
+                <div class="cp-sv" id="cpSV" role="slider" tabindex="0" data-i18n-aria="cp.map" aria-label="اختر اللون من الخريطة"><div class="cp-knob" id="cpKnob"></div></div>
+                <input class="cp-hue" id="cpHue" type="range" min="0" max="359" step="1" value="0" data-i18n-aria="cp.hue" aria-label="درجة اللون">
+              </div>
+              <div class="cp-side">
+                <div class="cp-out">
+                  <span class="cp-swatch" id="cpSwatch"></span>
+                  <div>
+                    <div class="cp-label" data-i18n="cp.nearest">أقرب لون</div>
+                    <div class="cp-name" id="cpName"></div>
+                    <div class="cp-hex" id="cpHex"></div>
+                  </div>
+                </div>
+                <div class="cp-label" data-i18n="cp.presets">ألوان سريعة</div>
+                <div class="cp-presets" id="f-color"></div>
+              </div>
+            </div>
           </fieldset>
 
           <fieldset>
@@ -625,6 +665,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
       "f.descPh": "القماش، الطول، هل يحتاج تعديل، هل يشمل الإكسسوارات…",
       "f.phone": "رقم التواصل (واتساب)", "f.phoneHint": "يظهر لكل من يفتح إعلانك",
       "f.removePhoto": "إزالة الصورة", "f.addPhoto": "إضافة صورة",
+      "cp.map": "اختر اللون من الخريطة", "cp.hue": "درجة اللون", "cp.nearest": "أقرب لون", "cp.presets": "ألوان سريعة",
       "v.title": "اكتب اسم الفستان", "v.rent": "أدخل سعر الإيجار", "v.sale": "أدخل سعر البيع", "v.phone": "رقم التواصل غير صحيح", "v.sep": "، ",
       "auth.art": "فساتين المناسبات · إيجار وبيع", "auth.loginTitle": "تسجيل الدخول", "auth.registerTitle": "حساب جديد",
       "auth.loginSub": "أهلاً بعودتك، سجّل دخولك لإدارة فساتينك.", "auth.registerSub": "انضم لدولاب واعرض فساتينك للإيجار أو البيع خلال دقائق.",
@@ -683,6 +724,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
       "f.descPh": "Fabric, length, alterations needed, accessories included…",
       "f.phone": "Contact number (WhatsApp)", "f.phoneHint": "Visible to anyone who opens your listing",
       "f.removePhoto": "Remove photo", "f.addPhoto": "Add photo",
+      "cp.map": "Pick a color from the map", "cp.hue": "Hue", "cp.nearest": "Closest color", "cp.presets": "Quick colors",
       "v.title": "Enter a dress name", "v.rent": "Enter the rent price", "v.sale": "Enter the sale price", "v.phone": "The contact number is invalid", "v.sep": " · ",
       "auth.art": "Occasion dresses · Rent & sell", "auth.loginTitle": "Sign in", "auth.registerTitle": "Create account",
       "auth.loginSub": "Welcome back — sign in to manage your dresses.", "auth.registerSub": "Join DOLAB and list your dresses for rent or sale in minutes.",
@@ -891,17 +933,12 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     fillSelect($("#fCity"), CITIES, t("filter.allCity"), state.city);
     const keep = (id) => $(id).value;
     const form = { size: keep("#f-size"), occ: keep("#f-occasion"), cond: keep("#f-condition"), city: keep("#f-city") };
-    const checked = document.querySelector('input[name="color"]:checked');
     fillSelect($("#f-size"), SIZES, null, form.size);
     fillSelect($("#f-occasion"), OCCASIONS, null, form.occ);
     fillSelect($("#f-condition"), CONDITIONS, null, form.cond);
     fillSelect($("#f-city"), CITIES, null, form.city);
-    const sel = checked ? checked.value : FORM_COLORS[0];
-    $("#f-color").replaceChildren(...FORM_COLORS.map((name) => h("label", null, [
-      h("input", { type: "radio", name: "color", value: name, checked: name === sel }),
-      h("span", null, [h("i", { style: "background:" + (COLORS[name] || "#C98AA0") }), tv(name)])
-    ])));
-    if (!document.querySelector('input[name="color"]:checked')) { const first = document.querySelector('input[name="color"]'); if (first) first.checked = true; }
+    renderPresets();
+    if (!pick.name) resetPick(); else showPick();
   }
 
   function matches(it) {
@@ -951,7 +988,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
       return;
     }
     const cards = shown.map((it) => h("button", { class: "card" + (it.status === "unavailable" ? " unavailable" : ""), type: "button", "data-id": it.id, onclick: () => openDetail(it.owner, it.id) }, [
-      h("div", { class: "img" }, [photoEl(it.photos && it.photos[0], COLORS[it.color]), tagsFor(it)]),
+      h("div", { class: "img" }, [photoEl(it.photos && it.photos[0], it.colorHex || COLORS[it.color]), tagsFor(it)]),
       h("div", { class: "title", text: it.title }),
       h("div", { class: "meta", text: [it.size, it.occasion, it.city].filter(Boolean).map(tv).join(" · ") }),
       priceLine(it)
@@ -984,7 +1021,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     const sheet = $("#detailSheet");
     if (!it) { closeOv("detailOv"); return; }
     const photos = it.photos || [];
-    const colorHex = COLORS[it.color];
+    const colorHex = it.colorHex || COLORS[it.color];
     const mine = it.owner === state.myId;
 
     // ----- gallery: arrows, counter, swipe, keyboard -----
@@ -1086,7 +1123,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     const similarSec = similar.length ? h("div", { class: "similar" }, [
       h("h3", { text: t("d.similar") }),
       h("div", { class: "sim-grid" }, similar.map((x) => h("button", { class: "sim-card", type: "button", onclick: () => { $("#detailOv").scrollTop = 0; openDetail(x.owner, x.id); } }, [
-        h("div", { class: "img" }, photoEl(x.photos && x.photos[0], COLORS[x.color])),
+        h("div", { class: "img" }, photoEl(x.photos && x.photos[0], x.colorHex || COLORS[x.color])),
         h("div", { class: "t", text: x.title }),
         h("div", { class: "p", text: x.rent ? nf.format(x.rent) + " " + t("perNight") : nf.format(x.sale) + " " + t("cur") })
       ])))
@@ -1242,6 +1279,118 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     return t("err.generic");
   }
 
+  // ---------- color map ----------
+  // تختار صاحبة الفستان الدرجة الدقيقة؛ ونحسب أقرب اسم لون من القائمة للبحث والعرض
+  const MULTI = "متعدد";
+  const pick = { h: 0, s: 0, v: 0.12, multi: false, name: "", hex: "" };
+  function hsvToHex(hh, s, v) {
+    const f = (n) => { const k = (n + hh / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); };
+    return "#" + [f(5), f(3), f(1)].map((x) => Math.round(x * 255).toString(16).padStart(2, "0")).join("").toUpperCase();
+  }
+  function hexToHsv(hex) {
+    const n = parseInt(hex.slice(1), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+    const max = Math.max(r, g, b), d = max - Math.min(r, g, b);
+    let hh = 0;
+    if (d) hh = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return { h: (hh * 60 + 360) % 360, s: max ? d / max : 0, v: max };
+  }
+  // المسافة في فضاء OKLab تشبه إحساس العين بالفرق بين لونين
+  function oklab(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    const r = lin(n >> 16 & 255), g = lin(n >> 8 & 255), b = lin(n & 255);
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    return [0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s, 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s, 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s];
+  }
+  // درجات مرجعية إضافية لكل اسم (فاتح وغامق) حتى يُسمّى السماوي «أزرق» والنعناعي «أخضر»
+  const ANCHORS = {
+    "أبيض": ["#FFFFFF", "#FFFDF7"], "أسود": ["#000000", "#2B2B2B"], "أحمر": ["#E0201B", "#FF4040", "#C8102E"],
+    "عنابي": ["#800020", "#4A0E1C", "#8B2942"], "وردي": ["#FFC0CB", "#FF69B4", "#F4A6B8", "#C2185B", "#FADADD"],
+    "بنفسجي": ["#C8A2C8", "#800080", "#4B0082", "#9370DB", "#E6D5F2"], "أزرق": ["#87CEEB", "#0047AB", "#191970", "#4169E1", "#B0D4F1", "#40E0D0"],
+    "أخضر": ["#98FB98", "#50C878", "#0B3D2E", "#556B2F", "#008080", "#C5E3C0"], "ذهبي": ["#FFD700", "#D4AF37", "#B8860B", "#F0E68C", "#FFBF00"],
+    "فضي": ["#C0C0C0", "#808080", "#A9A9A9", "#D3D3D3"], "بيج": ["#F5F5DC", "#E9D8C0", "#C8AD7F", "#F3E5D0", "#D2B48C"]
+  };
+  function nearestName(hex) {
+    const a = oklab(hex);
+    let best = FORM_COLORS[0], bestD = Infinity;
+    for (const name of FORM_COLORS) {
+      if (name === MULTI || !COLORS[name]) continue;
+      for (const ref of [COLORS[name]].concat(ANCHORS[name] || [])) {
+        // الإضاءة بوزن أقل من درجة اللون: الوردي الفاتح يبقى وردياً لا بيجاً
+        const b = oklab(ref), d = (0.5 * (a[0] - b[0])) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
+        if (d < bestD) { bestD = d; best = name; }
+      }
+    }
+    return best;
+  }
+  function showPick() {
+    const sv = $("#cpSV");
+    sv.style.setProperty("--h", pick.h);
+    $("#cpHue").style.setProperty("--h", pick.h);
+    $("#cpHue").value = Math.round(pick.h);
+    const knob = $("#cpKnob");
+    knob.style.left = pick.s * 100 + "%";
+    knob.style.top = (1 - pick.v) * 100 + "%";
+    knob.style.background = pick.multi ? "transparent" : pick.hex;
+    knob.hidden = pick.multi;
+    const sw = $("#cpSwatch");
+    sw.classList.toggle("multi", pick.multi);
+    sw.style.background = pick.multi ? "" : pick.hex;
+    $("#cpName").textContent = tv(pick.name);
+    $("#cpHex").textContent = pick.multi ? "" : pick.hex;
+    sv.setAttribute("aria-valuetext", tv(pick.name) + (pick.multi ? "" : " " + pick.hex));
+    document.querySelectorAll("#f-color button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.name === pick.name && (pick.multi || b.dataset.hex === pick.hex))));
+  }
+  function setFromHsv(hh, s, v) {
+    Object.assign(pick, { h: hh, s, v, multi: false });
+    pick.hex = hsvToHex(hh, s, v);
+    pick.name = nearestName(pick.hex);
+    showPick();
+  }
+  // اختيار لون جاهز: نحفظ اسمه كما هو حتى لو كان أقرب لاسم آخر
+  function setFromPreset(name) {
+    if (name === MULTI) { Object.assign(pick, { multi: true, name: MULTI, hex: "" }); showPick(); return; }
+    const hex = COLORS[name] || "#C98AA0";
+    Object.assign(pick, hexToHsv(hex), { multi: false, name, hex });
+    showPick();
+  }
+  function setFromSaved(name, hex) {
+    if (hex && /^#[0-9a-f]{6}$/i.test(hex)) { Object.assign(pick, hexToHsv(hex), { multi: false, name: name || nearestName(hex), hex: hex.toUpperCase() }); showPick(); }
+    else setFromPreset(name || FORM_COLORS[0]);
+  }
+  function renderPresets() {
+    $("#f-color").replaceChildren(...FORM_COLORS.map((name) => h("button", {
+      type: "button", class: name === MULTI ? "multi" : null, "data-name": name, "data-hex": COLORS[name] || "",
+      style: name === MULTI ? null : "background:" + (COLORS[name] || "#C98AA0"),
+      title: tv(name), "aria-label": tv(name), onclick: () => setFromPreset(name)
+    })));
+  }
+  (function bindColorMap() {
+    const sv = $("#cpSV");
+    const fromPointer = (e) => {
+      const r = sv.getBoundingClientRect();
+      const s = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+      const v = 1 - Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+      setFromHsv(pick.h, s, v);
+    };
+    sv.addEventListener("pointerdown", (e) => { sv.setPointerCapture(e.pointerId); fromPointer(e); });
+    sv.addEventListener("pointermove", (e) => { if (sv.hasPointerCapture(e.pointerId)) fromPointer(e); });
+    sv.addEventListener("keydown", (e) => {
+      const step = e.shiftKey ? 0.1 : 0.02, d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }[e.key];
+      if (!d) return;
+      e.preventDefault();
+      setFromHsv(pick.h, Math.min(1, Math.max(0, pick.s + d[0])), Math.min(1, Math.max(0, pick.v + d[1])));
+    });
+    $("#cpHue").addEventListener("input", (e) => {
+      // عند اختيار درجة من لون رمادي نعطيه تشبّعاً حتى يظهر التغيير
+      const s = pick.multi || pick.s < 0.15 ? 0.7 : pick.s, v = pick.multi || pick.v < 0.2 ? 0.7 : pick.v;
+      setFromHsv(Number(e.target.value), s, v);
+    });
+  })();
+  const resetPick = () => setFromPreset(FORM_COLORS.includes("أسود") ? "أسود" : FORM_COLORS[0]);
+
   // ---------- add / edit form ----------
   // كل صورة في النموذج: { url, file? , id? } — id يعني أنها مرفوعة على السيرفر
   let pending = [], editingId = null;
@@ -1281,7 +1430,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
   }
   function openAdd() {
     if (!state.myId) { openAuth(openAdd); return; }
-    if (editingId) { editingId = null; clearPhotos(); $("#addForm").reset(); }
+    if (editingId) { editingId = null; clearPhotos(); $("#addForm").reset(); resetPick(); }
     showForm();
   }
   // قيمة قديمة حذفها المشرف من القوائم تبقى قابلة للاختيار في إعلانها
@@ -1302,12 +1451,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     setSelect($("#f-occasion"), it.occasion);
     setSelect($("#f-condition"), it.condition);
     setSelect($("#f-city"), it.city);
-    let color = [...document.querySelectorAll('input[name="color"]')].find((r) => r.value === it.color);
-    if (!color && it.color) {
-      color = h("input", { type: "radio", name: "color", value: it.color });
-      $("#f-color").append(h("label", null, [color, h("span", null, [h("i", { style: "background:" + (COLORS[it.color] || "#C98AA0") }), tv(it.color)])]));
-    }
-    if (color) color.checked = true;
+    setFromSaved(it.color, it.colorHex);
     $("#f-desc").value = it.desc || "";
     $("#f-phone").value = it.phone || "";
     pending = (it.photos || []).map((id) => ({ id, url: "/uploads/" + encodeURIComponent(id) }));
@@ -1360,13 +1504,13 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
         title, mode,
         rent: mode !== "sale" ? rent : 0, deposit: mode !== "sale" ? deposit : 0, sale: mode !== "rent" ? sale : 0,
         size: $("#f-size").value, occasion: $("#f-occasion").value, condition: $("#f-condition").value, city: $("#f-city").value,
-        color: document.querySelector('input[name="color"]:checked').value,
+        color: pick.name, colorHex: pick.multi ? null : pick.hex,
         desc: val("#f-desc"), phone, photos: photoIds
       };
       if (editing) await api("PUT", "/api/dresses/" + encodeURIComponent(editing), item);
       else await api("POST", "/api/dresses", item);
       clearPhotos(); editingId = null;
-      $("#addForm").reset(); syncMode();
+      $("#addForm").reset(); syncMode(); resetPick();
       closeOv("addOv");
       toast(editing ? t("toast.saved") : t("toast.published"));
       await loadDresses();

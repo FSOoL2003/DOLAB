@@ -51,6 +51,8 @@ CREATE INDEX IF NOT EXISTS uploads_orphan_idx ON uploads(created_at) WHERE dress
 ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
 ALTER TABLE dresses ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT FALSE;
+-- الدرجة الدقيقة المختارة من خريطة الألوان (color يبقى اسم أقرب لون للبحث)
+ALTER TABLE dresses ADD COLUMN IF NOT EXISTS color_hex TEXT;
 
 -- إعدادات قابلة للتعديل من اللوحة (مثل قوائم المقاسات والمدن)
 CREATE TABLE IF NOT EXISTS settings (

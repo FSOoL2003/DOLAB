@@ -27,6 +27,7 @@ function toClient(r) {
     condition: r.condition,
     city: r.city,
     color: r.color,
+    colorHex: r.color_hex,
     desc: r.description,
     phone: r.phone,
     photos: r.photos,
@@ -64,6 +65,9 @@ function validate(b, keep = {}) {
   const phone = String(b.phone || "").trim();
   if (phone && !/^\+?[\d\s-]{8,18}$/.test(phone)) errors.push("phone");
 
+  const colorHex = b.colorHex == null || b.colorHex === "" ? null : String(b.colorHex);
+  if (colorHex && !/^#[0-9a-f]{6}$/i.test(colorHex)) errors.push("colorHex");
+
   const photos = Array.isArray(b.photos) ? b.photos : [];
   if (photos.length > MAX_PHOTOS || !photos.every((p) => typeof p === "string") || new Set(photos).size !== photos.length) {
     errors.push("photos");
@@ -73,6 +77,7 @@ function validate(b, keep = {}) {
     errors,
     value: {
       title, mode, rent, deposit, sale, phone, photos,
+      colorHex: colorHex && colorHex.toUpperCase(),
       size: pick("size", C.sizes),
       occasion: pick("occasion", C.occasions),
       condition: pick("condition", C.conditions),
@@ -115,9 +120,9 @@ router.post("/", requireUser, async (req, res) => {
       }
     }
     await client.query(
-      `INSERT INTO dresses (id, owner_id, title, mode, rent, deposit, sale, size, occasion, condition, city, color, description, phone, photos)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
-      [id, req.user.id, v.title, v.mode, v.rent, v.deposit, v.sale, v.size, v.occasion, v.condition, v.city, v.color, v.description, v.phone, v.photos]
+      `INSERT INTO dresses (id, owner_id, title, mode, rent, deposit, sale, size, occasion, condition, city, color, color_hex, description, phone, photos)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+      [id, req.user.id, v.title, v.mode, v.rent, v.deposit, v.sale, v.size, v.occasion, v.condition, v.city, v.color, v.colorHex, v.description, v.phone, v.photos]
     );
     if (v.photos.length) await client.query("UPDATE uploads SET dress_id = $1 WHERE id = ANY($2)", [id, v.photos]);
     await client.query("COMMIT");
@@ -163,9 +168,9 @@ router.put("/:id", requireUser, async (req, res) => {
     if (removed.length) await client.query("DELETE FROM uploads WHERE id = ANY($1)", [removed]);
     await client.query(
       `UPDATE dresses SET title = $2, mode = $3, rent = $4, deposit = $5, sale = $6, size = $7, occasion = $8,
-         condition = $9, city = $10, color = $11, description = $12, phone = $13, photos = $14
+         condition = $9, city = $10, color = $11, description = $12, phone = $13, photos = $14, color_hex = $15
        WHERE id = $1`,
-      [req.params.id, v.title, v.mode, v.rent, v.deposit, v.sale, v.size, v.occasion, v.condition, v.city, v.color, v.description, v.phone, v.photos]
+      [req.params.id, v.title, v.mode, v.rent, v.deposit, v.sale, v.size, v.occasion, v.condition, v.city, v.color, v.description, v.phone, v.photos, v.colorHex]
     );
     await client.query("COMMIT");
   } catch (e) {
