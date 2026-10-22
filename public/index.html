@@ -1,15 +1,12 @@
 <!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
 <title>دولاب الفساتين</title>
 <script>
-// اللغة قبل رسم الصفحة: ?lang= ثم الاختيار المحفوظ ثم لغة المتصفح
+// اللغة قبل رسم الصفحة: ?lang= ثم اختيار الزائر المحفوظ، وإلا العربية (اللغة الأساسية)
 (function () {
   var l = null;
   try { l = new URLSearchParams(location.search).get("lang"); } catch (e) {}
   if (l !== "ar" && l !== "en") { try { l = localStorage.getItem("dolab_lang"); } catch (e) {} }
-  if (l !== "ar" && l !== "en") {
-    var langs = navigator.languages || [navigator.language || "ar"];
-    l = langs.some(function (x) { return /^ar/i.test(x); }) ? "ar" : "en";
-  }
+  if (l !== "ar" && l !== "en") l = "ar";
   document.documentElement.lang = l;
   document.documentElement.dir = l === "ar" ? "rtl" : "ltr";
 })();
