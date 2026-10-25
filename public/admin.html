@@ -152,6 +152,25 @@ tbody tr.click:hover td { background: var(--gold-soft); }
 .add-row input[type="color"] { width: 42px; height: 38px; padding: 2px; border: 1px solid var(--line); background: var(--surface); }
 .savebar { position: sticky; bottom: 0; background: var(--surface); border: 1px solid var(--gold); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; box-shadow: var(--shadow); }
 
+/* date range bar + period comparison */
+.range-bar { display: grid; gap: 14px; }
+.rb-row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.rb-row h2 { font-size: 18px; }
+.seg.wrap { border-radius: 16px; }
+.seg button:disabled { opacity: .35; cursor: not-allowed; }
+.custom-range { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; font-size: 13px; color: var(--muted); }
+.custom-range label { display: inline-flex; align-items: center; gap: 8px; }
+.custom-range input[type="date"] { border: 1px solid var(--line); border-radius: 999px; background: var(--surface); padding: 6px 12px; color: var(--fg); }
+.custom-range input[type="date"]:focus { outline: none; border-color: var(--gold); }
+.delta { font-weight: 600; font-variant-numeric: tabular-nums; }
+.delta.up { color: var(--ok); }
+.delta.down { color: var(--danger); }
+.delta.flat { color: var(--muted); font-weight: 400; }
+.kpi .vs { color: var(--muted); }
+#tab-overview.busy { opacity: .55; pointer-events: none; transition: opacity .2s; }
+.kpis.period { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.kpis.period .kpi .val { font-size: 27px; }
+
 /* review queue */
 .count-badge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--danger); color: #FFF; font-size: 11.5px; font-weight: 600; margin-inline-start: 4px; vertical-align: 2px; }
 .rv { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: grid; gap: 16px; }
@@ -392,40 +411,159 @@ tbody tr.click:hover td { background: var(--gold-soft); }
   ];
   let metric = "visitors", stats = null;
 
+  // الفترة المختارة — نحفظها في المتصفح حتى ترجع لنفس الفترة (تسهيل فقط)
+  const PRESETS = [
+    ["today", "اليوم"], ["yesterday", "أمس"], ["7d", "آخر 7 أيام"], ["30d", "آخر 30 يوم"], ["month", "هذا الشهر"],
+    ["lastMonth", "الشهر الماضي"], ["90d", "آخر 3 أشهر"], ["year", "هذه السنة"], ["custom", "مخصص"]
+  ];
+  const BUCKET_LABELS = [["hour", "بالساعة"], ["day", "باليوم"], ["week", "بالأسبوع"], ["month", "بالشهر"]];
+  const range = { preset: "30d", from: "", to: "", bucket: "" };
+  try { Object.assign(range, JSON.parse(localStorage.getItem("dolab_admin_range") || "{}")); } catch (e) {}
+  const saveRange = () => { try { localStorage.setItem("dolab_admin_range", JSON.stringify(range)); } catch (e) {} };
+  const ymd = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  function presetDates(p) {
+    const now = new Date(), y = now.getFullYear(), m = now.getMonth(), t = now.getDate();
+    const d = (yy, mm, dd) => new Date(yy, mm, dd);
+    switch (p) {
+      case "today": return [d(y, m, t), d(y, m, t)];
+      case "yesterday": return [d(y, m, t - 1), d(y, m, t - 1)];
+      case "7d": return [d(y, m, t - 6), d(y, m, t)];
+      case "30d": return [d(y, m, t - 29), d(y, m, t)];
+      case "month": return [d(y, m, 1), d(y, m, t)];
+      case "lastMonth": return [d(y, m - 1, 1), d(y, m, 0)];
+      case "90d": return [d(y, m, t - 89), d(y, m, t)];
+      case "year": return [d(y, 0, 1), d(y, m, t)];
+    }
+    return null;
+  }
+  function rangeQuery() {
+    const pd = range.preset !== "custom" && presetDates(range.preset);
+    const q = new URLSearchParams();
+    const from = pd ? ymd(pd[0]) : range.from, to = pd ? ymd(pd[1]) : range.to;
+    if (from) q.set("from", from);
+    if (to) q.set("to", to);
+    if (range.bucket) q.set("bucket", range.bucket);
+    return q.toString();
+  }
+
   async function loadOverview() {
-    loading("#tab-overview");
-    try { stats = await api("GET", "/api/admin/stats"); } catch (e) { fail(e); return; }
+    if (!stats) loading("#tab-overview");
+    const box = $("#tab-overview");
+    box.classList.add("busy");
+    try { stats = await api("GET", "/api/admin/stats?" + rangeQuery()); }
+    catch (e) { box.classList.remove("busy"); fail(e); return; }
+    box.classList.remove("busy");
     renderOverview();
   }
   function kpi(label, val, sub) {
     return h("div", { class: "kpi" }, [h("div", { class: "lbl", text: label }), h("div", { class: "val num", text: val }), sub ? h("div", { class: "sub" }, sub) : null]);
   }
-  const week = (n) => [h("b", { class: "num", text: "+" + fmt(n) }), " آخر 7 أيام"];
+
+  // ---- labels for dates and buckets ----
+  const dayOf = (s) => new Date(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+  const tOf = (t) => new Date(+t.slice(0, 4), +t.slice(5, 7) - 1, +t.slice(8, 10), +t.slice(11, 13) || 0, +t.slice(14, 16) || 0);
+  const fHour = new Intl.DateTimeFormat("ar-SA-u-nu-latn-ca-gregory", { hour: "numeric" });
+  const fMonth = new Intl.DateTimeFormat("ar-SA-u-nu-latn-ca-gregory", { month: "long", year: "numeric" });
+  const fMonthShort = new Intl.DateTimeFormat("ar-SA-u-nu-latn-ca-gregory", { month: "short" });
+  function bucketLabel(t, b, long) {
+    const d = tOf(t);
+    if (b === "hour") return long ? df.format(d) + " · " + fHour.format(d) : fHour.format(d);
+    if (b === "week") return long ? "أسبوع " + df.format(d) : dshort.format(d);
+    if (b === "month") return long ? fMonth.format(d) : fMonthShort.format(d);
+    return long ? df.format(d) : dshort.format(d);
+  }
+  function rangeText(from, to) {
+    return from === to ? df.format(dayOf(from)) : dshort.format(dayOf(from)) + " – " + df.format(dayOf(to));
+  }
+
+  // التغيّر عن الفترة السابقة بنفس الطول
+  function delta(cur, prev) {
+    if (!cur && !prev) return h("span", { class: "delta flat", text: "بدون تغيير" });
+    if (!prev) return h("span", { class: "delta up", text: "▲ جديد" });
+    const p = Math.round(((cur - prev) / prev) * 100);
+    if (!p) return h("span", { class: "delta flat", text: "= نفس السابقة" });
+    return h("span", { class: "delta " + (p > 0 ? "up" : "down"), text: (p > 0 ? "▲ " : "▼ ") + fmt(Math.abs(p)) + "%" });
+  }
+  const vsPrev = (cur, prev) => [delta(cur, prev), h("span", { class: "vs", text: " · قبلها " + fmt(prev) })];
+
+  function rangeBar() {
+    const R = stats.range;
+    const presets = h("div", { class: "seg wrap", role: "group", "aria-label": "الفترة" }, PRESETS.map(([k, l]) => h("button", {
+      type: "button", "aria-pressed": String(range.preset === k), text: l, onclick: () => {
+        range.preset = k; range.bucket = "";
+        if (k === "custom") { range.from = range.from || R.from; range.to = range.to || R.to; saveRange(); renderOverview(); return; }
+        saveRange(); loadOverview();
+      }
+    })));
+    let custom = null;
+    if (range.preset === "custom") {
+      const today = ymd(new Date());
+      const fromIn = h("input", { type: "date", value: range.from, max: today, "aria-label": "من تاريخ" });
+      const toIn = h("input", { type: "date", value: range.to, max: today, "aria-label": "إلى تاريخ" });
+      custom = h("div", { class: "custom-range" }, [
+        h("label", null, ["من", fromIn]), h("label", null, ["إلى", toIn]),
+        h("button", { class: "btn primary sm", type: "button", text: "عرض", onclick: () => {
+          if (!fromIn.value || !toIn.value) { toast("اختر التاريخين"); return; }
+          if (fromIn.value > toIn.value) { toast("تاريخ البداية بعد النهاية"); return; }
+          range.from = fromIn.value; range.to = toIn.value; range.bucket = "";
+          saveRange(); loadOverview();
+        } })
+      ]);
+    }
+    // التجميع المتاح حسب طول الفترة
+    const allowed = { hour: R.days <= 7, day: R.days <= 400, week: R.days >= 14, month: R.days >= 28 };
+    const buckets = h("div", { class: "seg", role: "group", "aria-label": "التجميع" }, BUCKET_LABELS.map(([k, l]) => h("button", {
+      type: "button", "aria-pressed": String(R.bucket === k), disabled: !allowed[k], text: l,
+      onclick: () => { range.bucket = k; saveRange(); loadOverview(); }
+    })));
+    return h("div", { class: "card range-bar" }, [
+      h("div", { class: "rb-row" }, [
+        h("div", null, [
+          h("h2", { text: rangeText(R.from, R.to) }),
+          h("p", { class: "hint", text: (R.days === 1 ? "يوم واحد" : fmt(R.days) + " يوم") + " · مقارنة بالفترة السابقة " + rangeText(R.prevFrom, R.prevTo) })
+        ]),
+        buckets
+      ]),
+      presets,
+      custom
+    ]);
+  }
 
   function renderOverview() {
-    const t = stats.totals;
-    const kpis = h("div", { class: "kpis" }, [
-      kpi("المستخدمون", fmt(t.users), week(t.users7d)),
-      kpi("الإعلانات", fmt(t.dresses), week(t.dresses7d)),
-      kpi("زوار آخر 7 أيام", fmt(t.visitors7d), "إجمالي " + fmt(t.visitors) + " زائر"),
-      kpi("مشاهدات الإعلانات", fmt(t.views), week(t.views7d)),
-      kpi("طلبات التواصل", fmt(t.contacts), week(t.contacts7d)),
-      kpi("نسبة التواصل", pct(t.contacts, t.views), "من المشاهدات إلى تواصل")
-    ]);
-    const split = h("div", { class: "kpis" }, [
-      kpi("للإيجار", fmt(t.rent)), kpi("للبيع", fmt(t.sale)), kpi("محجوز / مُباع", fmt(t.unavailable)),
-      kpi("بانتظار المراجعة", fmt(t.pending)), kpi("بانتظار صور من صاحبتها", fmt(t.needs_photos)), kpi("مخفية من الإدارة", fmt(t.hidden)), kpi("مستخدمون محظورون", fmt(t.banned))
+    const c = stats.current, p = stats.previous, n = stats.now, R = stats.range;
+    const rateCur = c.views ? c.contacts / c.views : 0, ratePrev = p.views ? p.contacts / p.views : 0;
+    const kpis = h("div", { class: "kpis period" }, [
+      kpi("الزوار", fmt(c.visitors), vsPrev(c.visitors, p.visitors)),
+      kpi("مشاهدات الإعلانات", fmt(c.views), vsPrev(c.views, p.views)),
+      kpi("طلبات التواصل", fmt(c.contacts), vsPrev(c.contacts, p.contacts)),
+      kpi("نسبة التواصل", pct(c.contacts, c.views), [delta(Math.round(rateCur * 1000), Math.round(ratePrev * 1000)), h("span", { class: "vs", text: " · قبلها " + pct(p.contacts, p.views) })]),
+      kpi("تسجيلات جديدة", fmt(c.signups), vsPrev(c.signups, p.signups)),
+      kpi("إعلانات جديدة", fmt(c.listings), vsPrev(c.listings, p.listings)),
+      kpi("إعلانات نُشرت", fmt(c.published), vsPrev(c.published, p.published))
     ]);
 
     const chartBox = h("div", { class: "chart" });
     const seg = h("div", { class: "seg", role: "group", "aria-label": "المؤشر" }, METRICS.map(([k, label]) =>
       h("button", { type: "button", "aria-pressed": String(k === metric), text: label, onclick: () => { metric = k; renderOverview(); } })));
     const label = METRICS.find((m) => m[0] === metric)[1];
-    const total = stats.daily.reduce((s, d) => s + d[metric], 0);
+    const total = stats.series.reduce((s, d) => s + d[metric], 0);
+    const bucketName = BUCKET_LABELS.find((b) => b[0] === R.bucket)[1];
     const trend = h("div", { class: "card" }, [
-      h("div", { class: "card-head" }, [h("div", null, [h("h2", { text: label + " — آخر 30 يوماً" }), h("p", { class: "hint num", text: "المجموع " + fmt(total) })]), seg]),
+      h("div", { class: "card-head" }, [
+        h("div", null, [h("h2", { text: label }), h("p", { class: "hint num", text: "المجموع " + fmt(total) + " · " + bucketName + (metric === "visitors" ? " · الزائر يُحسب مرة بكل عمود" : "") })]),
+        seg
+      ]),
       chartBox,
-      dataTable(stats.daily, metric, label)
+      dataTable(stats.series, metric, label, R.bucket)
+    ]);
+
+    const nowRow = h("div", { class: "card" }, [
+      h("div", { class: "card-head" }, [h("div", null, [h("h2", { text: "الآن" }), h("p", { class: "hint", text: "الوضع الحالي للموقع — لا يتغيّر مع الفترة" })])]),
+      h("div", { class: "kpis" }, [
+        kpi("المستخدمون", fmt(n.users)), kpi("إعلانات منشورة", fmt(n.live)), kpi("للإيجار", fmt(n.rent)), kpi("للبيع", fmt(n.sale)),
+        kpi("محجوز / مُباع", fmt(n.unavailable)), kpi("بانتظار المراجعة", fmt(n.pending)), kpi("بانتظار صور", fmt(n.needs_photos)),
+        kpi("مخفية", fmt(n.hidden)), kpi("محظورون", fmt(n.banned))
+      ])
     ]);
 
     const lists = h("div", { class: "grid2" }, [
@@ -434,26 +572,26 @@ tbody tr.click:hover td { background: var(--gold-soft); }
     ]);
 
     const top = h("div", { class: "card" }, [
-      h("div", { class: "card-head" }, [h("h2", { text: "أكثر الإعلانات مشاهدة" })]),
+      h("div", { class: "card-head" }, [h("div", null, [h("h2", { text: "أكثر الإعلانات مشاهدة" }), h("p", { class: "hint", text: "خلال " + rangeText(R.from, R.to) })])]),
       stats.top.length ? h("div", { class: "tbl-wrap" }, h("table", null, [
         h("thead", null, h("tr", null, [h("th", { text: "" }), h("th", { text: "الفستان" }), h("th", { text: "صاحبه" }), h("th", { class: "n", text: "مشاهدات" }), h("th", { class: "n", text: "تواصل" }), h("th", { class: "n", text: "نسبة التواصل" })])),
         h("tbody", null, stats.top.map((d) => h("tr", null, [
           h("td", null, thumb(d.photo)), h("td", { text: d.title }), h("td", { text: d.owner_name }),
           h("td", { class: "n", text: fmt(d.views) }), h("td", { class: "n", text: fmt(d.contacts) }), h("td", { class: "n", text: pct(d.contacts, d.views) })
         ])))
-      ])) : h("div", { class: "empty", text: "لا توجد إعلانات بعد." })
+      ])) : h("div", { class: "empty", text: "ما في مشاهدات بهالفترة." })
     ]);
 
-    $("#tab-overview").replaceChildren(kpis, trend, split, lists, top);
-    barChart(chartBox, stats.daily, metric, label);
+    $("#tab-overview").replaceChildren(rangeBar(), kpis, trend, nowRow, lists, top);
+    barChart(chartBox, stats.series, metric, label, R.bucket);
   }
 
-  function dataTable(days, key, label) {
+  function dataTable(series, key, label, bucket) {
     return h("details", { class: "data" }, [
       h("summary", { text: "عرض البيانات كجدول" }),
       h("div", { class: "tbl-wrap", style: "margin-top:10px;max-height:280px;overflow-y:auto" }, h("table", null, [
-        h("thead", null, h("tr", null, [h("th", { text: "اليوم" }), h("th", { class: "n", text: label })])),
-        h("tbody", null, days.slice().reverse().map((d) => h("tr", null, [h("td", { text: df.format(new Date(d.day + "T12:00:00")) }), h("td", { class: "n", text: fmt(d[key]) })])))
+        h("thead", null, h("tr", null, [h("th", { text: "الفترة" }), h("th", { class: "n", text: label })])),
+        h("tbody", null, series.slice().reverse().map((d) => h("tr", null, [h("td", { text: bucketLabel(d.t, bucket, true) }), h("td", { class: "n", text: fmt(d[key]) })])))
       ]))
     ]);
   }
@@ -477,20 +615,22 @@ tbody tr.click:hover td { background: var(--gold-soft); }
     return 10 * p;
   }
 
-  // أعمدة يومية بلون واحد، مع تلميح عند المرور على كل يوم
-  function barChart(box, days, key, label) {
+  // أعمدة بلون واحد لكل ساعة/يوم/أسبوع/شهر، مع تلميح عند المرور
+  function barChart(box, series, key, label, bucket) {
     const W = Math.max(300, box.clientWidth), H = 230, L = 36, R = 6, T = 12, B = 26;
-    const max = niceMax(Math.max(0, ...days.map((d) => d[key])));
-    const n = days.length, cw = (W - L - R) / n, bw = Math.max(2, cw - 2);
+    const max = niceMax(Math.max(0, ...series.map((d) => d[key])));
+    const n = series.length, cw = (W - L - R) / n, bw = Math.max(1.5, Math.min(cw - 2, 48));
     const y = (v) => T + (H - T - B) * (1 - v / max);
-    const svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": label + " يومياً خلال آخر 30 يوماً" });
+    const svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": label });
     const grid = svgEl("g", { class: "grid" }), axis = svgEl("g", { class: "axis" }), bars = svgEl("g", {}), hits = svgEl("g", {});
     for (const v of [0, max / 2, max]) {
       grid.append(svgEl("line", { x1: L, x2: W - R, y1: y(v), y2: y(v) }));
       const t = svgEl("text", { x: L - 8, y: y(v) + 4, "text-anchor": "end" }); t.textContent = fmt(v); axis.append(t);
     }
+    // حوالي 7 تسميات على المحور مهما كان عدد الأعمدة، وآخر عمود دائماً
+    const step = Math.max(1, Math.ceil(n / 7));
     const tip = h("div", { class: "tip", hidden: true });
-    const barEls = days.map((d, i) => {
+    const barEls = series.map((d, i) => {
       const x = L + i * cw + (cw - bw) / 2, base = y(0), top = y(d[key]), hgt = base - top;
       let el;
       if (d[key] > 0) {
@@ -500,17 +640,17 @@ tbody tr.click:hover td { background: var(--gold-soft); }
         el = svgEl("rect", { class: "bar", x, y: base - 1, width: bw, height: 1, opacity: 0.4 });
       }
       bars.append(el);
-      if ((n - 1 - i) % 7 === 0) {
+      if ((n - 1 - i) % step === 0) {
         const t = svgEl("text", { x: x + bw / 2, y: H - 8, "text-anchor": "middle" });
-        t.textContent = dshort.format(new Date(d.day + "T12:00:00")); axis.append(t);
+        t.textContent = bucketLabel(d.t, bucket, false); axis.append(t);
       }
       const hit = svgEl("rect", { class: "hit", x: L + i * cw, y: T, width: cw, height: H - T - B + 4 });
       const show = () => {
         box.classList.add("hovering"); barEls.forEach((b, j) => b.classList.toggle("on", j === i));
-        tip.replaceChildren(df.format(new Date(d.day + "T12:00:00")) + " · ", h("b", { text: fmt(d[key]) }));
+        tip.replaceChildren(bucketLabel(d.t, bucket, true) + " · ", h("b", { text: fmt(d[key]) }));
         tip.hidden = false;
         const scale = box.clientWidth / W;
-        tip.style.left = Math.min(box.clientWidth - 60, Math.max(60, (x + bw / 2) * scale)) + "px";
+        tip.style.left = Math.min(box.clientWidth - 70, Math.max(70, (x + bw / 2) * scale)) + "px";
         tip.style.top = Math.min(y(d[key]), H - B - 10) * scale + "px";
       };
       hit.addEventListener("mouseenter", show);

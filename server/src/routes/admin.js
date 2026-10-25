@@ -14,46 +14,94 @@ const rows = (sql, params) => pool.query(sql, params).then((r) => r.rows);
 const ms = (d) => (d ? d.getTime() : null);
 
 // ---------- الإحصائيات ----------
+// ?from=YYYY-MM-DD&to=YYYY-MM-DD&bucket=hour|day|week|month — التواريخ بتوقيت الرياض، و«to» شاملة
+const BUCKETS = ["hour", "day", "week", "month"];
+const DAY_MS = 86400000;
+const isoDay = (t) => new Date(t).toISOString().slice(0, 10);
+
+function parseRange(q) {
+  const re = /^\d{4}-\d{2}-\d{2}$/;
+  // اليوم بتوقيت الرياض (UTC+3 بدون توقيت صيفي)
+  const today = isoDay(Date.now() + 3 * 3600000);
+  let to = re.test(q.to || "") ? q.to : today;
+  let from = re.test(q.from || "") ? q.from : isoDay(Date.parse(to) - 29 * DAY_MS);
+  if (Number.isNaN(Date.parse(from)) || Number.isNaN(Date.parse(to))) return null;
+  if (from > to) [from, to] = [to, from];
+  const days = Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS) + 1;
+  if (days > 3 * 366) return null;
+  // التجميع التلقائي، مع منع عدد أعمدة غير معقول
+  let bucket = BUCKETS.includes(q.bucket) ? q.bucket : days <= 2 ? "hour" : days <= 92 ? "day" : days <= 400 ? "week" : "month";
+  const per = { hour: 1 / 24, day: 1, week: 7, month: 30 };
+  if (days / per[bucket] > 400) bucket = days / 7 <= 400 ? "week" : "month";
+  // الفترة السابقة بنفس الطول مباشرة قبلها، للمقارنة
+  const prevTo = isoDay(Date.parse(from) - DAY_MS), prevFrom = isoDay(Date.parse(from) - days * DAY_MS);
+  return { from, to, days, bucket, prevFrom, prevTo };
+}
+
+// من بداية يوم «from» إلى نهاية يوم «to» بتوقيت الرياض
+const SPAN = "($1::date::timestamp AT TIME ZONE '" + TZ + "') AS s, (($2::date + 1)::timestamp AT TIME ZONE '" + TZ + "') AS e";
+async function periodTotals(from, to) {
+  const [r] = await rows(`WITH w AS (SELECT ${SPAN})
+    SELECT
+      (SELECT count(DISTINCT visitor) FROM events, w WHERE type = 'visit' AND created_at >= s AND created_at < e)::int AS visitors,
+      (SELECT count(*) FROM events, w WHERE type = 'view' AND created_at >= s AND created_at < e)::int AS views,
+      (SELECT count(*) FROM events, w WHERE type IN ${CONTACT} AND created_at >= s AND created_at < e)::int AS contacts,
+      (SELECT count(*) FROM users, w WHERE created_at >= s AND created_at < e)::int AS signups,
+      (SELECT count(*) FROM dresses, w WHERE created_at >= s AND created_at < e)::int AS listings,
+      (SELECT count(*) FROM dresses, w WHERE reviewed_at >= s AND reviewed_at < e)::int AS published`, [from, to]);
+  return r;
+}
+
 router.get("/stats", async (req, res) => {
-  const [[totals], daily, cities, occasions, top] = await Promise.all([
+  const R = parseRange(req.query);
+  if (!R) return res.status(400).json({ error: "validation" });
+  const B = R.bucket;
+  const [[now], current, previous, series, cities, occasions, top] = await Promise.all([
+    // الوضع الحالي — لا يتأثر بالفترة
     rows(`SELECT
       (SELECT count(*) FROM users)::int AS users,
-      (SELECT count(*) FROM users WHERE created_at > now() - interval '7 days')::int AS users7d,
       (SELECT count(*) FROM users WHERE banned_at IS NOT NULL)::int AS banned,
       (SELECT count(*) FROM dresses)::int AS dresses,
-      (SELECT count(*) FROM dresses WHERE created_at > now() - interval '7 days')::int AS dresses7d,
+      (SELECT count(*) FROM dresses WHERE review_status = 'approved' AND NOT hidden)::int AS live,
       (SELECT count(*) FROM dresses WHERE mode IN ('rent', 'both'))::int AS rent,
       (SELECT count(*) FROM dresses WHERE mode IN ('sale', 'both'))::int AS sale,
       (SELECT count(*) FROM dresses WHERE status = 'unavailable')::int AS unavailable,
       (SELECT count(*) FROM dresses WHERE hidden)::int AS hidden,
       (SELECT count(*) FROM dresses WHERE review_status = 'pending')::int AS pending,
-      (SELECT count(*) FROM dresses WHERE review_status = 'needs_photos')::int AS needs_photos,
-      (SELECT count(DISTINCT visitor) FROM events WHERE type = 'visit' AND created_at > now() - interval '7 days')::int AS visitors7d,
-      (SELECT count(DISTINCT visitor) FROM events WHERE type = 'visit')::int AS visitors,
-      (SELECT count(*) FROM events WHERE type = 'view')::int AS views,
-      (SELECT count(*) FROM events WHERE type = 'view' AND created_at > now() - interval '7 days')::int AS views7d,
-      (SELECT count(*) FROM events WHERE type IN ${CONTACT})::int AS contacts,
-      (SELECT count(*) FROM events WHERE type IN ${CONTACT} AND created_at > now() - interval '7 days')::int AS contacts7d`),
-    rows(`WITH days AS (
-        SELECT generate_series((now() AT TIME ZONE $1)::date - 29, (now() AT TIME ZONE $1)::date, interval '1 day')::date AS d
+      (SELECT count(*) FROM dresses WHERE review_status = 'needs_photos')::int AS needs_photos`),
+    periodTotals(R.from, R.to),
+    periodTotals(R.prevFrom, R.prevTo),
+    // عمود لكل ساعة/يوم/أسبوع/شهر في الفترة، حتى الفارغة منها
+    rows(`WITH w AS (SELECT ${SPAN}),
+      b AS (
+        SELECT generate_series(date_trunc('${B}', $1::date::timestamp), date_trunc('${B}', ($2::date + 1)::timestamp - interval '1 second'), interval '1 ${B}') AS t
       ),
-      ev AS (SELECT (created_at AT TIME ZONE $1)::date AS d, type, visitor FROM events WHERE created_at > now() - interval '31 days')
-      SELECT to_char(days.d, 'YYYY-MM-DD') AS day,
-        (SELECT count(DISTINCT visitor) FROM ev WHERE ev.d = days.d AND type = 'visit')::int AS visitors,
-        (SELECT count(*) FROM ev WHERE ev.d = days.d AND type = 'view')::int AS views,
-        (SELECT count(*) FROM ev WHERE ev.d = days.d AND type IN ${CONTACT})::int AS contacts,
-        (SELECT count(*) FROM users WHERE (created_at AT TIME ZONE $1)::date = days.d)::int AS signups,
-        (SELECT count(*) FROM dresses WHERE (created_at AT TIME ZONE $1)::date = days.d)::int AS listings
-      FROM days ORDER BY days.d`, [TZ]),
+      ev AS (
+        SELECT date_trunc('${B}', created_at AT TIME ZONE '${TZ}') AS t,
+          count(DISTINCT visitor) FILTER (WHERE type = 'visit') AS visitors,
+          count(*) FILTER (WHERE type = 'view') AS views,
+          count(*) FILTER (WHERE type IN ${CONTACT}) AS contacts
+        FROM events, w WHERE created_at >= s AND created_at < e GROUP BY 1
+      ),
+      us AS (SELECT date_trunc('${B}', created_at AT TIME ZONE '${TZ}') AS t, count(*) AS n FROM users, w WHERE created_at >= s AND created_at < e GROUP BY 1),
+      ds AS (SELECT date_trunc('${B}', created_at AT TIME ZONE '${TZ}') AS t, count(*) AS n FROM dresses, w WHERE created_at >= s AND created_at < e GROUP BY 1)
+      SELECT to_char(b.t, 'YYYY-MM-DD"T"HH24:MI') AS t,
+        coalesce(ev.visitors, 0)::int AS visitors, coalesce(ev.views, 0)::int AS views, coalesce(ev.contacts, 0)::int AS contacts,
+        coalesce(us.n, 0)::int AS signups, coalesce(ds.n, 0)::int AS listings
+      FROM b LEFT JOIN ev USING (t) LEFT JOIN us USING (t) LEFT JOIN ds USING (t) ORDER BY b.t`, [R.from, R.to]),
     rows("SELECT city AS label, count(*)::int AS n FROM dresses GROUP BY city ORDER BY n DESC, city LIMIT 10"),
     rows("SELECT occasion AS label, count(*)::int AS n FROM dresses GROUP BY occasion ORDER BY n DESC, occasion LIMIT 10"),
-    rows(`SELECT d.id, d.title, d.photos[1] AS photo, u.name AS owner_name,
+    // الأكثر مشاهدة خلال الفترة نفسها
+    rows(`WITH w AS (SELECT ${SPAN})
+      SELECT d.id, d.title, coalesce(d.photos[1], d.raw_photos[1]) AS photo, u.name AS owner_name,
         count(e.id) FILTER (WHERE e.type = 'view')::int AS views,
         count(e.id) FILTER (WHERE e.type IN ${CONTACT})::int AS contacts
-      FROM dresses d JOIN users u ON u.id = d.owner_id LEFT JOIN events e ON e.dress_id = d.id
-      GROUP BY d.id, u.name ORDER BY views DESC, contacts DESC, d.created_at DESC LIMIT 10`),
+      FROM dresses d JOIN users u ON u.id = d.owner_id
+      JOIN events e ON e.dress_id = d.id, w
+      WHERE e.created_at >= w.s AND e.created_at < w.e
+      GROUP BY d.id, u.name ORDER BY views DESC, contacts DESC LIMIT 10`, [R.from, R.to]),
   ]);
-  res.json({ totals, daily, cities, occasions, top });
+  res.json({ range: R, now, current, previous, series, cities, occasions, top });
 });
 
 // ---------- المستخدمون ----------
