@@ -361,7 +361,8 @@ a.btn:not(.primary) { color: var(--fg); }
 .add-sheet .photos.no-photos label.pick { aspect-ratio: auto; padding: 30px 16px; font-size: 14px; }
 .add-sheet .photos.no-photos label.pick small { font-size: 12px; color: var(--muted); }
 .add-sheet .photos.drag { outline: 2px dashed var(--gold); outline-offset: 4px; border-radius: 12px; }
-.add-actions { position: sticky; bottom: 0; z-index: 2; display: flex; gap: 10px; justify-content: flex-end; align-items: center; background: var(--surface); margin: 0 -28px; padding: 14px 28px calc(14px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); }
+/* sticky يلتصق فوق الحشوة السفلية للـ overlay، فنعوّضها حتى يلتصق الشريط بأسفل الشاشة تماماً */
+.add-actions { position: sticky; bottom: calc(-28px - env(safe-area-inset-bottom, 0px)); z-index: 2; display: flex; gap: 10px; justify-content: flex-end; align-items: center; background: var(--surface); margin: 0 -28px; padding: 14px 28px calc(14px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); }
 .add-actions .btn.primary { padding: 12px 30px; font-size: 14.5px; }
 .add-sheet .err { background: color-mix(in srgb, var(--danger) 8%, transparent); border-radius: 12px; padding: 10px 14px; }
 .add-preview { position: sticky; top: 20px; display: grid; gap: 14px; }
@@ -442,7 +443,7 @@ html[dir="ltr"] body { direction: ltr; }
   .similar { padding: 0 18px 24px; }
   .sim-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* زر التواصل يبقى ظاهراً أسفل الشاشة على الجوال */
-  .contact-sticky { position: sticky; bottom: 0; z-index: 3; background: var(--surface); margin-inline: -18px; padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); }
+  .contact-sticky { position: sticky; bottom: calc(-28px - env(safe-area-inset-bottom, 0px)); z-index: 3; background: var(--surface); margin-inline: -18px; padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); }
   .sheet { border-radius: 16px; }
 }
 
