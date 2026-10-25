@@ -23,28 +23,6 @@ app.use((req, res, next) => {
 
 app.get("/healthz", (req, res) => res.json({ ok: true }));
 
-// خريطة الموقع لمحركات البحث — آخر تحديث = آخر فستان أُضيف
-app.get("/sitemap.xml", async (req, res) => {
-  const { rows } = await pool.query("SELECT max(created_at) AS last FROM dresses WHERE NOT hidden AND review_status = 'approved'");
-  const last = (rows[0].last || new Date()).toISOString().slice(0, 10);
-  const base = `${req.protocol}://${req.get("host")}`;
-  const url = (loc, lang) => `  <url>
-    <loc>${loc}</loc>
-    <lastmod>${last}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>${lang === "ar" ? "1.0" : "0.8"}</priority>
-    <xhtml:link rel="alternate" hreflang="ar" href="${base}/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="${base}/?lang=en"/>
-  </url>`;
-  res.type("application/xml").set("Cache-Control", "public, max-age=3600").send(
-    `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
-${url(base + "/", "ar")}
-${url(base + "/?lang=en", "en")}
-</urlset>
-`);
-});
-
 // أسماء الصور عشوائية ولا تتغير، لذلك يمكن تخزينها مؤقتاً لمدة طويلة
 app.use("/uploads", express.static(config.uploadDir, { maxAge: "365d", immutable: true, index: false }));
 
@@ -63,6 +41,13 @@ app.use("/api", (req, res, next) => {
   next();
 });
 
+// أي تعديل ناجح على الإعلانات أو المستخدمين يحدّث أعداد التصنيفات فوراً (قبل المسارات حتى يُسجَّل)
+const seo = require("./seo");
+app.use(["/api/dresses", "/api/admin"], (req, res, next) => {
+  if (req.method !== "GET") res.on("finish", () => { if (res.statusCode < 400) seo.invalidate(); });
+  next();
+});
+
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/dresses", require("./routes/dresses").router);
 app.use("/api/uploads", uploads.router);
@@ -70,6 +55,9 @@ app.use("/api/events", require("./routes/events"));
 app.use("/api/admin", require("./routes/admin"));
 app.get("/api/catalog", (req, res) => res.json({ catalog: getCatalog() }));
 app.use("/api", (req, res) => res.status(404).json({ error: "not_found" }));
+
+// الصفحة الرئيسية، صفحات الفساتين والتصنيفات، وخريطة الموقع — قبل الملفات الثابتة
+seo.mount(app);
 
 // /admin يفتح admin.html
 app.use(express.static(config.publicDir, { maxAge: "5m", extensions: ["html"] }));

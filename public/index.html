@@ -384,6 +384,33 @@ a.btn:not(.primary) { color: var(--fg); }
   .add-sheet .photos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+/* indexable pages: cards are real links, server-written headings for categories and dresses, category links */
+a.card, a.sim-card { color: inherit; text-decoration: none; }
+.hero .hero-h1 { font-weight: 200; font-size: clamp(40px, 7vw, 86px); line-height: 1.15; margin: 0; text-wrap: balance; }
+.hero .hero-h1 em { font-style: normal; font-weight: 300; padding-inline: .04em; background: linear-gradient(100deg, #8C6A2C 0%, #C9A44C 28%, #F6E3AE 50%, #C9A44C 72%, #8C6A2C 100%); background-size: 240% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: goldshine 7s linear infinite; }
+.crumbs { font-size: 12.5px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.crumbs a { color: var(--muted); text-decoration: none; }
+.crumbs a:hover { color: var(--gold); }
+.crumbs i { font-style: normal; opacity: .6; }
+.landing { padding-block: 26px 6px; display: grid; gap: 8px; }
+.landing h1 { margin: 0; font-weight: 300; font-size: clamp(26px, 4vw, 38px); line-height: 1.3; }
+.landing p { margin: 0; color: var(--muted); max-width: 75ch; font-weight: 300; line-height: 1.8; }
+.ssr-dress { padding-block: 26px 10px; display: grid; gap: 14px; }
+.ssr-grid { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 24px; align-items: start; }
+.ssr-grid img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 14px; background: var(--tile); }
+.ssr-dress h1 { margin: 0 0 6px; font-weight: 300; font-size: 30px; line-height: 1.3; }
+.ssr-price { margin: 0 0 10px; font-size: 17px; font-weight: 500; }
+.ssr-specs { list-style: none; padding: 0; margin: 0 0 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+.ssr-specs li { border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: 13px; }
+.ssr-specs span { color: var(--muted); }
+@media (max-width: 600px) { .ssr-grid { grid-template-columns: minmax(0, 1fr); } .ssr-grid img { max-width: 240px; } }
+.seo-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; padding: 34px 0 56px; border-top: 1px solid var(--line); margin-top: 10px; }
+.seo-links h2 { margin: 0 0 10px; font-size: 13px; font-weight: 500; color: var(--gold); letter-spacing: .06em; }
+.seo-links ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.seo-links a { color: var(--fg); text-decoration: none; font-size: 14px; font-weight: 300; }
+.seo-links a:hover { color: var(--gold); }
+.seo-links a span { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+
 /* photo review flow: status badges, owner status box, form notes */
 .tag.review { background: var(--gold); color: #FFF; }
 .tag.rejected { background: var(--danger); color: #FFF; }
@@ -533,7 +560,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
   .hero-copy > *, .rule::before, .rule::after { opacity: 1; transform: none; }
   .hero-sweep, .scroll-cue { display: none; }
   .card.reveal { opacity: 1; transform: none; }
-  .overlay, .sheet, .gallery .main img, .auth-art-bg, .auth-logo, .add-hero-bg { animation: none !important; }
+  .overlay, .sheet, .gallery .main img, .auth-art-bg, .auth-logo, .add-hero-bg, .hero .hero-h1 em { animation: none !important; }
 }
 </style>
 </head>
@@ -1010,6 +1037,17 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     const el = $("#toast"); el.textContent = msg; el.hidden = false;
     clearTimeout(toastT); toastT = setTimeout(() => (el.hidden = true), ms || 2600);
   }
+  // رابط ثابت لكل فستان — يجب أن يطابق slugify في server/src/seo.js
+  function slugify(s) {
+    return String(s || "").toLowerCase().normalize("NFKC").replace(/[ً-ْـ]/g, "")
+      .replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "dress";
+  }
+  const dressPath = (it) => "/dress/" + it.id + "-" + encodeURIComponent(slugify(it.title));
+  const SSR = window.__SSR || { type: "home" };
+  // الصفحة التي نرجع لها عند إغلاق نافذة الفستان
+  let backPath = SSR.type === "dress" ? "/" : location.pathname;
+  // ضغطة عادية تفتح النافذة؛ Ctrl/الزر الأوسط يفتح الرابط في تبويب جديد
+  const plainClick = (e) => !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1);
   function waNumber(phone) {
     let d = String(phone || "").replace(/\D/g, "");
     if (/^05\d{8}$/.test(d)) d = "966" + d.slice(1);
@@ -1189,7 +1227,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
       grid.replaceChildren(emptyBox(t("empty.noMatchT"), t("empty.noMatchS"), false));
       return;
     }
-    const cards = shown.map((it) => h("button", { class: "card" + (it.status === "unavailable" ? " unavailable" : ""), type: "button", "data-id": it.id, onclick: () => openDetail(it.owner, it.id) }, [
+    const cards = shown.map((it) => h("a", { class: "card" + (it.status === "unavailable" ? " unavailable" : ""), href: dressPath(it), "data-id": it.id, onclick: (e) => { if (!plainClick(e)) return; e.preventDefault(); openDetail(it.owner, it.id); } }, [
       h("div", { class: "img" }, [photoEl(shownPhotos(it)[0], it.colorHex || COLORS[it.color]), tagsFor(it)]),
       h("div", { class: "title", text: it.title }),
       h("div", { class: "meta", text: [it.size, it.occasion, it.city].filter(Boolean).map(tv).join(" · ") }),
@@ -1213,7 +1251,9 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     detailKey = { owner, id }; confirmDel = false;
     track("view", id);
     // رابط مباشر للفستان يمكن مشاركته
-    try { history.replaceState(null, "", location.search + "#dress=" + encodeURIComponent(id)); } catch (e) {}
+    const it = state.items.find((x) => x.id === id);
+    if (!location.pathname.startsWith("/dress/")) backPath = location.pathname;
+    if (it) try { history.replaceState(null, "", dressPath(it) + location.search); } catch (e) {}
     $("#detailOv").hidden = false;
     await renderDetail();
   }
@@ -1296,7 +1336,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     ]);
 
     // ----- contact + share -----
-    const shareUrl = location.origin + "/" + (lang === "en" ? "?lang=en" : "") + "#dress=" + encodeURIComponent(it.id);
+    const shareUrl = location.origin + dressPath(it) + (lang === "en" ? "?lang=en" : "");
     const shareBtn = h("button", { class: "icon-btn", type: "button", "aria-label": t("d.share"), title: t("d.share"), onclick: async () => {
       try {
         if (navigator.share) await navigator.share({ title: it.title, text: t("d.shareText"), url: shareUrl });
@@ -1335,7 +1375,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
       .slice(0, 4);
     const similarSec = similar.length ? h("div", { class: "similar" }, [
       h("h3", { text: t("d.similar") }),
-      h("div", { class: "sim-grid" }, similar.map((x) => h("button", { class: "sim-card", type: "button", onclick: () => { $("#detailOv").scrollTop = 0; openDetail(x.owner, x.id); } }, [
+      h("div", { class: "sim-grid" }, similar.map((x) => h("a", { class: "sim-card", href: dressPath(x), onclick: (e) => { if (!plainClick(e)) return; e.preventDefault(); $("#detailOv").scrollTop = 0; openDetail(x.owner, x.id); } }, [
         h("div", { class: "img" }, photoEl(x.photos && x.photos[0], x.colorHex || COLORS[x.color])),
         h("div", { class: "t", text: x.title }),
         h("div", { class: "p", text: x.rent ? nf.format(x.rent) + " " + t("perNight") : nf.format(x.sale) + " " + t("cur") })
@@ -1412,7 +1452,12 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     $("#" + id).hidden = true;
     if (id === "detailOv") {
       detailKey = null; galleryNav = null;
-      if (location.hash.startsWith("#dress=")) try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+      // صفحة الفستان المكتوبة من السيرفر تختفي بعد الإغلاق ونرجع لقائمة الفساتين
+      const ssr = $("#ssrDress");
+      if (ssr) ssr.remove();
+      if (location.pathname.startsWith("/dress/") || location.hash.startsWith("#dress=")) {
+        try { history.replaceState(null, "", backPath + location.search); } catch (e) {}
+      }
     }
   }
   document.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => closeOv(b.dataset.close)));
@@ -1960,7 +2005,8 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     root.dir = isRTL() ? "rtl" : "ltr";
     nf = new Intl.NumberFormat(lang === "en" ? "en-US" : "ar-SA-u-nu-latn");
     rtf = new Intl.RelativeTimeFormat(lang === "en" ? "en" : "ar-u-nu-latn", { numeric: "auto" });
-    document.title = t("doc.title");
+    // عنوان صفحات الفساتين والتصنيفات يأتي من السيرفر
+    if (SSR.type === "home") document.title = t("doc.title");
     document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
     document.querySelectorAll("[data-i18n-ph]").forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
     document.querySelectorAll("[data-i18n-aria]").forEach((el) => { el.setAttribute("aria-label", t(el.dataset.i18nAria)); });
@@ -1975,6 +2021,15 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     if (detailKey) renderDetail();
   }
   $("#langBtn").addEventListener("click", () => {
+    // صفحات التصنيفات والفساتين مكتوبة من السيرفر بلغة واحدة، فنعيد تحميلها باللغة الجديدة
+    if (SSR.type !== "home") {
+      const next = lang === "ar" ? "en" : "ar";
+      try { localStorage.setItem("dolab_lang", next); } catch (e) {}
+      const u = new URL(location.href);
+      if (next === "en") u.searchParams.set("lang", "en"); else u.searchParams.delete("lang");
+      location.href = u.pathname + u.search;
+      return;
+    }
     setLang(lang === "ar" ? "en" : "ar", true);
     // نحدّث الرابط حتى تبقى اللغة عند مشاركته
     try {
@@ -1990,12 +2045,24 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     track("visit");
     try { const c = await api("GET", "/api/catalog"); applyCatalog(c.catalog); } catch (e) {}
     try { const d = await api("GET", "/api/auth/me"); setUser(d.user); } catch (e) {}
+    // صفحة تصنيف: نطبّق المناسبة والمدينة على الفلاتر
+    if (SSR.type === "listing") {
+      state.occ = SSR.occ || ""; state.city = SSR.city || "";
+      fillCatalogUI();
+    }
     await loadDresses();
-    const link = location.hash.match(/^#dress=([\w-]+)/);
-    if (link) {
-      const it = state.items.find((x) => x.id === link[1]);
+    // صفحة فستان من السيرفر، أو رابط قديم بصيغة #dress=
+    const old = location.hash.match(/^#dress=([\w-]+)/);
+    const wanted = SSR.type === "dress" ? SSR.id : old && old[1];
+    if (wanted) {
+      const it = state.items.find((x) => x.id === wanted);
       if (it) openDetail(it.owner, it.id);
-      else { toast(t("toast.gone")); try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {} }
+      else {
+        toast(t("toast.gone"));
+        const ssr = $("#ssrDress");
+        if (ssr) ssr.remove();
+        try { history.replaceState(null, "", "/" + location.search); } catch (e) {}
+      }
     }
     setInterval(() => { if (document.visibilityState === "visible") loadDresses(); }, 60000);
   })();
