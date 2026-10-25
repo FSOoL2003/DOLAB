@@ -362,7 +362,7 @@ a.btn:not(.primary) { color: var(--fg); }
 .add-sheet .photos.no-photos label.pick small { font-size: 12px; color: var(--muted); }
 .add-sheet .photos.drag { outline: 2px dashed var(--gold); outline-offset: 4px; border-radius: 12px; }
 /* sticky يلتصق فوق الحشوة السفلية للـ overlay، فنعوّضها حتى يلتصق الشريط بأسفل الشاشة تماماً */
-.add-actions { position: sticky; bottom: calc(-28px - env(safe-area-inset-bottom, 0px)); z-index: 2; display: flex; gap: 10px; justify-content: flex-end; align-items: center; background: var(--surface); margin: 0 -28px; padding: 14px 28px calc(14px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); }
+.add-actions { position: sticky; bottom: calc(-28px - env(safe-area-inset-bottom, 0px)); z-index: 2; display: flex; gap: 10px; justify-content: flex-end; align-items: center; background: var(--surface); margin-top: 24px; padding: 14px 28px calc(14px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); box-shadow: 0 -10px 24px -18px rgba(20, 18, 16, .35); }
 .add-actions .btn.primary { padding: 12px 30px; font-size: 14.5px; }
 .add-sheet .err { background: color-mix(in srgb, var(--danger) 8%, transparent); border-radius: 12px; padding: 10px 14px; }
 .add-preview { position: sticky; top: 20px; display: grid; gap: 14px; }
@@ -375,7 +375,7 @@ a.btn:not(.primary) { color: var(--fg); }
 @media (max-width: 900px) {
   .add-layout { grid-template-columns: minmax(0, 1fr); padding: 18px 16px 0; }
   .add-preview { display: none; }
-  .add-actions { margin: 0 -16px; padding-inline: 16px; }
+  .add-actions { padding-inline: 16px; margin-top: 18px; }
   .add-hero { height: 120px; }
   .add-hero-copy { padding: 0 18px 16px; }
   .add-hero h2 { font-size: 23px; }
@@ -651,10 +651,6 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
           </section>
 
           <p class="err" id="formErr" hidden></p>
-          <div class="add-actions">
-            <button class="btn ghost" type="button" data-close="addOv" data-i18n="f.cancel">إلغاء</button>
-            <button class="btn primary" type="submit" id="submitBtn">نشر الفستان</button>
-          </div>
         </form>
 
         <aside class="add-preview" aria-hidden="true">
@@ -665,6 +661,11 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
             <span data-i18n="f.tip">الصور بضوء النهار على خلفية سادة، مع وصف واضح للمقاس والقماش، بتجيب تواصل أكتر.</span>
           </div>
         </aside>
+      </div>
+      <!-- الشريط خارج النموذج حتى يمتد بعرض النافذة تحت العمودين؛ زر النشر مربوط بالنموذج عبر form="addForm" -->
+      <div class="add-actions">
+        <button class="btn ghost" type="button" data-close="addOv" data-i18n="f.cancel">إلغاء</button>
+        <button class="btn primary" type="submit" form="addForm" id="submitBtn">نشر الفستان</button>
       </div>
     </div>
   </div>
