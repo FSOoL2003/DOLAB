@@ -27,6 +27,7 @@ router.get("/stats", async (req, res) => {
       (SELECT count(*) FROM dresses WHERE status = 'unavailable')::int AS unavailable,
       (SELECT count(*) FROM dresses WHERE hidden)::int AS hidden,
       (SELECT count(*) FROM dresses WHERE review_status = 'pending')::int AS pending,
+      (SELECT count(*) FROM dresses WHERE review_status = 'needs_photos')::int AS needs_photos,
       (SELECT count(DISTINCT visitor) FROM events WHERE type = 'visit' AND created_at > now() - interval '7 days')::int AS visitors7d,
       (SELECT count(DISTINCT visitor) FROM events WHERE type = 'visit')::int AS visitors,
       (SELECT count(*) FROM events WHERE type = 'view')::int AS views,
@@ -162,10 +163,20 @@ router.patch("/dresses/:id", async (req, res) => {
 // ---------- طلبات النشر ----------
 // صاحبة الإعلان ترفع صوراً خاماً؛ المشرف ينزّلها ويجهّزها ثم يرفع النهائية وينشر
 router.get("/reviews", async (req, res) => {
-  const list = await rows(`SELECT d.*, u.name AS owner_name, u.email AS owner_email
-    FROM dresses d JOIN users u ON u.id = d.owner_id
-    WHERE d.review_status = 'pending' ORDER BY d.submitted_at NULLS LAST, d.created_at`);
+  const [list, waiting] = await Promise.all([
+    rows(`SELECT d.*, u.name AS owner_name, u.email AS owner_email
+      FROM dresses d JOIN users u ON u.id = d.owner_id
+      WHERE d.review_status = 'pending' ORDER BY d.submitted_at NULLS LAST, d.created_at`),
+    // طلبات أرجعناها لصاحباتها: بانتظار صور جديدة أو تعديل
+    rows(`SELECT d.id, d.title, d.review_status, d.review_note, d.submitted_at, u.name AS owner_name, u.email AS owner_email
+      FROM dresses d JOIN users u ON u.id = d.owner_id
+      WHERE d.review_status IN ('needs_photos', 'rejected') ORDER BY d.submitted_at DESC NULLS LAST LIMIT 100`),
+  ]);
   res.json({
+    waiting: waiting.map((d) => ({
+      id: d.id, title: d.title, status: d.review_status, note: d.review_note,
+      ownerName: d.owner_name, ownerEmail: d.owner_email, submittedAt: ms(d.submitted_at),
+    })),
     reviews: list.map((d) => ({
       id: d.id, title: d.title, mode: d.mode, rent: d.rent, deposit: d.deposit, sale: d.sale,
       size: d.size, occasion: d.occasion, condition: d.condition, city: d.city, color: d.color, colorHex: d.color_hex,
@@ -212,6 +223,18 @@ router.post("/dresses/:id/approve", async (req, res) => {
     client.release();
   }
   await removeFiles(dropped);
+  res.json({ ok: true });
+});
+
+// الصور غير واضحة: نطلب من صاحبة الإعلان صوراً جديدة بدل الرفض
+router.post("/dresses/:id/request-photos", async (req, res) => {
+  const note = String((req.body || {}).note || "").trim().slice(0, 300);
+  if (!note) return res.status(400).json({ error: "validation" });
+  const { rowCount } = await pool.query(
+    "UPDATE dresses SET review_status = 'needs_photos', review_note = $2 WHERE id = $1 AND review_status = 'pending'",
+    [req.params.id, note]
+  );
+  if (!rowCount) return res.status(404).json({ error: "not_found" });
   res.json({ ok: true });
 });
 

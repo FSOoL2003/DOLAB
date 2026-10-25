@@ -187,7 +187,13 @@ router.put("/:id", requireUser, async (req, res) => {
     if (added.length) await client.query("UPDATE uploads SET dress_id = $1 WHERE id = ANY($2)", [req.params.id, added]);
 
     const photosChanged = added.length > 0 || raw.some((p) => !v.photos.includes(p));
-    const status = photosChanged || dress.review_status === "rejected" ? "pending" : dress.review_status;
+    // المشرف طلب صوراً أوضح: لازم ترفع صورة جديدة واحدة على الأقل قبل الإرسال
+    if (dress.review_status === "needs_photos" && !added.length) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "new_photos_required" });
+    }
+    const reopen = dress.review_status === "rejected" || dress.review_status === "needs_photos";
+    const status = photosChanged || reopen ? "pending" : dress.review_status;
     resubmitted = status === "pending" && dress.review_status !== "pending";
 
     // نحذف الخام المحذوف، إلا إذا كان المشرف استخدمه كصورة نهائية

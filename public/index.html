@@ -394,6 +394,31 @@ a.btn:not(.primary) { color: var(--fg); }
 .review-box q { display: block; margin-top: 4px; padding: 8px 12px; border-radius: 10px; background: var(--surface); font-style: normal; quotes: none; }
 .fnote { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.7; background: var(--gold-soft); border-radius: 10px; padding: 8px 12px; }
 .fnote.warn { background: color-mix(in srgb, var(--danger) 7%, transparent); color: var(--fg); }
+.fnote.req { background: color-mix(in srgb, var(--danger) 8%, var(--surface)); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); color: var(--fg); display: grid; gap: 2px; }
+.fnote.req b { color: var(--danger); font-weight: 500; }
+.tag.needs { background: #C2410C; color: #FFF; }
+.review-box.needs { background: color-mix(in srgb, #C2410C 7%, var(--surface)); border-color: color-mix(in srgb, #C2410C 35%, transparent); }
+.review-box.needs b { color: #C2410C; }
+.review-box .btn { justify-self: start; margin-top: 8px; }
+
+/* missing fields: red field, message under it, red section number, summary in the pinned bar */
+.ainp.invalid, .add-sheet .photos.invalid label.pick { border-color: var(--danger) !important; box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 12%, transparent); }
+.ferr { margin: 0; color: var(--danger); font-size: 12.5px; font-weight: 400; }
+.fsec.has-err { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+.fsec.has-err .fnum { background: var(--danger); color: #FFF; }
+.bar-err { margin: 0; margin-inline-end: auto; color: var(--danger); font-size: 13px; line-height: 1.5; flex: 1 1 auto; min-width: 0; }
+
+/* submission confirmation: stays until closed */
+.done-sheet { padding: 34px 30px 28px; text-align: center; display: grid; gap: 12px; justify-items: center; }
+.done-mark { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #E8C878, #9A7430); display: grid; place-items: center; box-shadow: 0 10px 30px -10px rgba(166, 129, 58, .7); animation: popIn .5s cubic-bezier(.2,.9,.3,1.3) both; }
+.done-mark svg { width: 32px; height: 32px; fill: none; stroke: #FFF; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+@keyframes popIn { from { transform: scale(.4); opacity: 0; } }
+.done-sheet h2 { margin: 4px 0 0; font-weight: 400; font-size: 24px; }
+.done-sheet p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.8; }
+.done-steps { list-style: none; counter-reset: s; padding: 0; margin: 6px 0 4px; display: grid; gap: 10px; text-align: start; width: 100%; }
+.done-steps li { counter-increment: s; display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; font-size: 13.5px; line-height: 1.7; }
+.done-steps li::before { content: counter(s); width: 26px; height: 26px; border-radius: 50%; background: var(--gold-soft); color: var(--gold); display: grid; place-items: center; font-size: 12.5px; font-weight: 600; }
+.done-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 6px; }
 
 /* English (left-to-right): mirror the few physical positions */
 html[dir="ltr"] body { direction: ltr; }
@@ -650,6 +675,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
             <div class="fsec-h"><span class="fnum">5</span><h3 data-i18n="f.photos">الصور</h3><span class="fopt" data-i18n="f.photosNote">حتى 4 صور</span></div>
             <p class="fnote"><span aria-hidden="true">📸</span> <span data-i18n="f.photosReview">فريق دولاب بيجهّز صورك بخلفية وإضاءة موحّدة قبل النشر. ارفعي صور واضحة للفستان كامل، من قدّام ومن ورا إذا أمكن.</span></p>
             <p class="fnote warn" id="photosWarn" hidden data-i18n="f.photosWarn">تغيير الصور بيرجّع الإعلان للمراجعة لحد ما نجهّز الصور الجديدة.</p>
+            <p class="fnote req" id="photosRequest" hidden></p>
             <div class="photos" id="photos"></div>
           </section>
 
@@ -663,7 +689,6 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
             </label>
           </section>
 
-          <p class="err" id="formErr" hidden></p>
         </form>
 
         <aside class="add-preview" aria-hidden="true">
@@ -677,6 +702,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
       </div>
       <!-- الشريط خارج النموذج حتى يمتد بعرض النافذة تحت العمودين؛ زر النشر مربوط بالنموذج عبر form="addForm" -->
       <div class="add-actions">
+        <p class="bar-err" id="barErr" role="alert" hidden></p>
         <button class="btn ghost" type="button" data-close="addOv" data-i18n="f.cancel">إلغاء</button>
         <button class="btn primary" type="submit" form="addForm" id="submitBtn">نشر الفستان</button>
       </div>
@@ -716,6 +742,22 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
           <p class="err" id="authErr" hidden></p>
           <button class="btn primary auth-submit" type="submit" id="authSubmit">دخول</button>
         </form>
+      </div>
+    </div>
+  </div>
+  <div class="overlay" id="doneOv" hidden>
+    <div class="sheet narrow done-sheet" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+      <div class="done-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <h2 id="doneTitle"></h2>
+      <p id="doneText"></p>
+      <ol class="done-steps">
+        <li data-i18n="done.step1">فريق دولاب بيراجع فستانك ويجهّز الصور بخلفية وإضاءة موحّدة</li>
+        <li data-i18n="done.step2">بننشر الإعلان خلال 24 ساعة، وإذا احتجنا صور أوضح بنطلبها منك</li>
+        <li data-i18n="done.step3">تقدري تتابعي حالة الإعلان من «فساتيني» بأي وقت</li>
+      </ol>
+      <div class="done-actions">
+        <button class="btn primary" type="button" data-close="doneOv" data-i18n="done.ok">تمام</button>
+        <button class="btn ghost" type="button" id="doneMine" data-i18n="done.mine">عرض فساتيني</button>
       </div>
     </div>
   </div>
@@ -772,6 +814,18 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
       "f.photosReview": "فريق دولاب بيجهّز صورك بخلفية وإضاءة موحّدة قبل النشر. ارفعي صور واضحة للفستان كامل، من قدّام ومن ورا إذا أمكن.",
       "f.photosWarn": "تغيير الصور بيرجّع الإعلان للمراجعة لحد ما نجهّز الصور الجديدة.",
       "v.photo": "أضيفي صورة واحدة على الأقل", "v.phoneReq": "اكتبي رقم التواصل (واتساب)",
+      "v.newPhotos": "ارفعي صورة جديدة واحدة على الأقل، متل ما طلب فريق دولاب",
+      "v.summary": "عبّي الخانات المعلّمة بالأحمر: {list}",
+      "f.subPhotos": "فريق دولاب طلب صور أوضح لفستانك. ارفعيها وابعتيها، وبنكمّل النشر.",
+      "f.photosRequested": "📸 فريق دولاب طلب صور جديدة:", "f.sendPhotos": "إرسال الصور الجديدة",
+      "tag.needsPhotos": "مطلوب صور",
+      "rv.needsT": "📸 مطلوب صور جديدة", "rv.needsS": "فريق دولاب طلب منك صور أوضح لفستانك:", "rv.uploadNew": "ارفعي الصور الجديدة",
+      "done.title": "تم استلام طلبك 🎉", "done.text": "شكراً إنك اخترتي دولاب! فستانك وصلنا وصار بإيدين فريقنا.",
+      "done.titleResub": "وصلتنا التعديلات ✨", "done.textResub": "رجع إعلانك لفريق دولاب للمراجعة، وبنخبرك هون أول ما ينشر.",
+      "done.step1": "فريق دولاب بيراجع فستانك ويجهّز الصور بخلفية وإضاءة موحّدة",
+      "done.step2": "بننشر الإعلان خلال 24 ساعة، وإذا احتجنا صور أوضح بنطلبها منك",
+      "done.step3": "تقدري تتابعي حالة الإعلان من «فساتيني» بأي وقت",
+      "done.ok": "تمام", "done.mine": "عرض فساتيني",
       "tag.pending": "قيد المراجعة", "tag.rejected": "يحتاج تعديل",
       "rv.pendingT": "⏳ فستانك قيد المراجعة", "rv.pendingS": "فريق دولاب بيجهّز الصور وبينشر الإعلان خلال 24 ساعة. الإعلان ظاهر لك بس لحد ما ينشر.",
       "rv.rejectedT": "الإعلان يحتاج تعديل", "rv.rejectedS": "عدّلي الإعلان حسب الملاحظة وابعتيه من جديد:",
@@ -784,7 +838,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
       "f.phone": "رقم التواصل (واتساب)", "f.phoneHint": "يظهر لكل من يفتح إعلانك",
       "f.removePhoto": "إزالة الصورة", "f.addPhoto": "إضافة صورة",
       "cp.map": "اختر اللون من الخريطة", "cp.hue": "درجة اللون", "cp.nearest": "أقرب لون", "cp.presets": "ألوان سريعة",
-      "v.title": "اكتب اسم الفستان", "v.rent": "أدخل سعر الإيجار", "v.sale": "أدخل سعر البيع", "v.phone": "رقم التواصل غير صحيح", "v.sep": "، ",
+      "v.title": "اكتبي اسم الفستان", "v.rent": "أدخلي سعر الإيجار", "v.sale": "أدخلي سعر البيع", "v.phone": "رقم التواصل غير صحيح", "v.sep": "، ",
       "auth.art": "فساتين المناسبات · إيجار وبيع", "auth.loginTitle": "تسجيل الدخول", "auth.registerTitle": "حساب جديد",
       "auth.loginSub": "أهلاً بعودتك، سجّل دخولك لإدارة فساتينك.", "auth.registerSub": "انضم لدولاب واعرض فساتينك للإيجار أو البيع خلال دقائق.",
       "auth.segAria": "نوع الدخول", "auth.tabLogin": "لدي حساب", "auth.tabRegister": "حساب جديد",
@@ -843,6 +897,18 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
       "f.photosReview": "The DOLAB team prepares your photos with a consistent background and lighting before publishing. Upload clear photos of the full dress, front and back if you can.",
       "f.photosWarn": "Changing the photos sends the listing back for review until the new photos are ready.",
       "v.photo": "Add at least one photo", "v.phoneReq": "Enter a contact number (WhatsApp)",
+      "v.newPhotos": "Upload at least one new photo, as the DOLAB team requested",
+      "v.summary": "Please fill in the fields marked in red: {list}",
+      "f.subPhotos": "The DOLAB team asked for clearer photos of your dress. Upload them and send — we'll take it from there.",
+      "f.photosRequested": "📸 The DOLAB team asked for new photos:", "f.sendPhotos": "Send new photos",
+      "tag.needsPhotos": "Photos needed",
+      "rv.needsT": "📸 New photos needed", "rv.needsS": "The DOLAB team asked for clearer photos of your dress:", "rv.uploadNew": "Upload new photos",
+      "done.title": "Request received 🎉", "done.text": "Thanks for choosing DOLAB! Your dress is with our team now.",
+      "done.titleResub": "Changes received ✨", "done.textResub": "Your listing is back with the DOLAB team for review — you'll see it here as soon as it's live.",
+      "done.step1": "The DOLAB team reviews your dress and prepares the photos with a consistent background and lighting",
+      "done.step2": "We publish within 24 hours — if we need clearer photos, we'll ask you",
+      "done.step3": "Track your listing's status anytime from “My dresses”",
+      "done.ok": "Got it", "done.mine": "View my dresses",
       "tag.pending": "In review", "tag.rejected": "Needs changes",
       "rv.pendingT": "⏳ Your dress is in review", "rv.pendingS": "The DOLAB team is preparing the photos and will publish your listing within 24 hours. Only you can see it until then.",
       "rv.rejectedT": "Your listing needs changes", "rv.rejectedS": "Update the listing based on this note and send it again:",
@@ -1098,6 +1164,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     const out = [];
     if (it.reviewStatus === "pending") out.push(h("span", { class: "tag review", text: t("tag.pending") }));
     if (it.reviewStatus === "rejected") out.push(h("span", { class: "tag rejected", text: t("tag.rejected") }));
+    if (it.reviewStatus === "needs_photos") out.push(h("span", { class: "tag needs", text: t("tag.needsPhotos") }));
     if (it.status === "unavailable") out.push(h("span", { class: "tag off", text: it.mode === "sale" ? t("tag.sold") : t("tag.booked") }));
     if (it.mode === "rent" || it.mode === "both") out.push(h("span", { class: "tag rent", text: t("tag.rent") }));
     if (it.mode === "sale" || it.mode === "both") out.push(h("span", { class: "tag sale", text: t("tag.sale") }));
@@ -1239,11 +1306,14 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     const contact = h("div", { class: "contact-box contact-sticky" });
     if (!isLive(it)) {
       // الإعلان لم يُنشر بعد: بدل أزرار التواصل والمشاركة نعرض حالته لصاحبته
-      const rejected = it.reviewStatus === "rejected";
-      contact.append(h("div", { class: "review-box" + (rejected ? " rejected" : "") }, [
-        h("b", { text: rejected ? t("rv.rejectedT") : t("rv.pendingT") }),
-        h("span", { text: rejected ? t("rv.rejectedS") : t("rv.pendingS") }),
-        rejected && it.reviewNote ? h("q", { text: it.reviewNote }) : null
+      const rs = it.reviewStatus;
+      const kind = rs === "rejected" ? "rejected" : rs === "needs_photos" ? "needs" : "pending";
+      const RV = { pending: [t("rv.pendingT"), t("rv.pendingS")], rejected: [t("rv.rejectedT"), t("rv.rejectedS")], needs: [t("rv.needsT"), t("rv.needsS")] };
+      contact.append(h("div", { class: "review-box" + (kind === "pending" ? "" : " " + kind) }, [
+        h("b", { text: RV[kind][0] }),
+        h("span", { text: RV[kind][1] }),
+        kind !== "pending" && it.reviewNote ? h("q", { text: it.reviewNote }) : null,
+        kind === "needs" && mine ? h("button", { class: "btn primary", type: "button", text: t("rv.uploadNew"), onclick: () => openEdit(it, "photos") }) : null
       ]));
     } else if (it.phone) {
       const wa = waNumber(it.phone);
@@ -1351,7 +1421,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     // السهم باتجاه القراءة = الصورة التالية (يسار في العربي، يمين في الإنجليزي)
     if (galleryNav && !$("#detailOv").hidden && (e.key === "ArrowLeft" || e.key === "ArrowRight")) galleryNav((e.key === "ArrowLeft") === isRTL() ? 1 : -1);
   });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { if (!$("#detailOv").hidden) closeOv("detailOv"); else if (!$("#addOv").hidden) closeOv("addOv"); else if (!$("#authOv").hidden) closeOv("authOv"); } });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { if (!$("#detailOv").hidden) closeOv("detailOv"); else if (!$("#addOv").hidden) closeOv("addOv"); else if (!$("#authOv").hidden) closeOv("authOv"); else if (!$("#doneOv").hidden) closeOv("doneOv"); } });
 
   // ---------- api ----------
   async function api(method, url, body) {
@@ -1369,6 +1439,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     if (!res.ok) {
       const e = new Error(data.error || "http_" + res.status);
       e.code = data.error || (res.status === 413 ? "too_large" : res.status === 429 ? "rate_limited" : "http");
+      e.fields = data.fields;
       throw e;
     }
     return data;
@@ -1540,7 +1611,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
 
   // ---------- add / edit form ----------
   // كل صورة في النموذج: { url, file? , id? } — id يعني أنها مرفوعة على السيرفر
-  let pending = [], editingId = null, editingLive = false;
+  let pending = [], editingId = null, editingStatus = "", editingNote = "";
   function clearPhotos() {
     pending.forEach((p) => { if (p.file) URL.revokeObjectURL(p.url); });
     pending = [];
@@ -1548,7 +1619,26 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
   function addFiles(files) {
     for (const f of Array.from(files || [])) { if (pending.length >= MAX_PHOTOS) break; if (f.type.startsWith("image/")) pending.push({ file: f, url: URL.createObjectURL(f) }); }
     renderPhotos();
+    if (pending.length && $("#photos").classList.contains("invalid")) {
+      clearInvalid("#photos");
+      if (!document.querySelector("#addForm .invalid")) setBarErr("");
+    }
   }
+
+  // ---------- submission confirmation ----------
+  function showDone(resubmitted) {
+    $("#doneTitle").textContent = resubmitted ? t("done.titleResub") : t("done.title");
+    $("#doneText").textContent = resubmitted ? t("done.textResub") : t("done.text");
+    $("#doneOv").hidden = false;
+    $("#doneOv .btn.primary").focus();
+  }
+  $("#doneMine").addEventListener("click", () => {
+    closeOv("doneOv");
+    state.mine = true;
+    $("#mineBtn").setAttribute("aria-pressed", "true");
+    render();
+    $(".filters").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
+  });
   function renderPhotos() {
     const box = $("#photos");
     box.classList.toggle("no-photos", !pending.length);
@@ -1602,22 +1692,72 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
   document.querySelectorAll('input[name="mode"]').forEach((r) => r.addEventListener("change", syncMode));
 
   function formTexts() {
+    const needs = editingId && editingStatus === "needs_photos";
     $("#addTitle").textContent = editingId ? t("f.editTitle") : t("f.addTitle");
-    $("#addSub").textContent = editingId ? t("f.subEdit") : t("f.sub");
-    $("#photosWarn").hidden = !(editingId && editingLive);
-    if (!saving) $("#submitBtn").textContent = editingId ? t("f.saveEdit") : t("f.publish");
+    $("#addSub").textContent = needs ? t("f.subPhotos") : editingId ? t("f.subEdit") : t("f.sub");
+    $("#photosWarn").hidden = !(editingId && editingStatus === "approved");
+    // ملاحظة المشرف عند طلب صور جديدة تظهر فوق منطقة الصور
+    const req = $("#photosRequest");
+    req.hidden = !needs;
+    if (needs) req.replaceChildren(h("b", { text: t("f.photosRequested") }), h("span", { text: editingNote || "" }));
+    if (!saving) $("#submitBtn").textContent = needs ? t("f.sendPhotos") : editingId ? t("f.saveEdit") : t("f.publish");
   }
-  function showForm() {
+  function showForm(focus) {
     formTexts();
-    $("#formErr").hidden = true;
+    clearInvalid();
     $("#addOv").hidden = false;
     renderPhotos(); syncMode();
     $("#addOv").scrollTop = 0;
-    $("#f-title").focus();
+    if (focus === "photos") $("#photos").closest(".fsec").scrollIntoView({ block: "center" });
+    else $("#f-title").focus();
   }
+
+  // ---------- validation: missing fields turn red with a message, and the bar lists them ----------
+  const FIELD_NAMES = { "#f-title": "f.title", "#f-rent": "f.rentPrice", "#f-sale": "f.salePrice", "#f-deposit": "f.deposit", "#f-phone": "f.phone", "#photos": "f.photos" };
+  const SERVER_FIELDS = { title: "#f-title", rent: "#f-rent", sale: "#f-sale", deposit: "#f-deposit", phone: "#f-phone", photos: "#photos" };
+  function clearInvalid(sel) {
+    const scope = sel ? [$(sel)] : [...document.querySelectorAll("#addForm .invalid")];
+    for (const el of scope) {
+      if (!el) continue;
+      el.classList.remove("invalid");
+      const host = el.closest(".af") || el.closest(".fsec");
+      const msg = host && host.querySelector(".ferr[data-for='" + (el.id || "") + "']");
+      if (msg) msg.remove();
+      const sec = el.closest(".fsec");
+      if (sec && !sec.querySelector(".invalid")) sec.classList.remove("has-err");
+    }
+    if (!sel) setBarErr("");
+  }
+  function markInvalid(sel, msg) {
+    const el = $(sel);
+    el.classList.add("invalid");
+    const host = sel === "#photos" ? el.parentElement : el.closest(".af");
+    if (!host.querySelector(".ferr[data-for='" + el.id + "']")) {
+      const p = h("p", { class: "ferr", "data-for": el.id, text: msg });
+      if (sel === "#photos") el.after(p); else host.append(p);
+    }
+    el.closest(".fsec").classList.add("has-err");
+  }
+  function setBarErr(msg) {
+    const b = $("#barErr");
+    b.textContent = msg;
+    b.hidden = !msg;
+  }
+  // نعرض كل الخانات الناقصة مرة وحدة وننقل الشاشة لأول وحدة
+  function showProblems(list) {
+    clearInvalid();
+    for (const [sel, msg] of list) markInvalid(sel, msg);
+    const names = [...new Set(list.map(([sel]) => FIELD_NAMES[sel] ? t(FIELD_NAMES[sel]) : sel))];
+    setBarErr(t("v.summary", { list: names.join(t("v.sep")) }));
+    const first = $(list[0][0]);
+    first.closest(".fsec").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+    if (first.tagName === "INPUT") setTimeout(() => first.focus({ preventScroll: true }), reduceMotion ? 0 : 350);
+  }
+  // أول ما تعبّي الخانة يختفي الأحمر منها
+  $("#addForm").addEventListener("input", (e) => { if (e.target.classList.contains("invalid")) { clearInvalid("#" + e.target.id); if (!document.querySelector("#addForm .invalid")) setBarErr(""); } });
   function openAdd() {
     if (!state.myId) { openAuth(openAdd); return; }
-    if (editingId) { editingId = null; editingLive = false; clearPhotos(); $("#addForm").reset(); resetPick(); }
+    if (editingId) { editingId = null; editingStatus = ""; editingNote = ""; clearPhotos(); $("#addForm").reset(); resetPick(); }
     showForm();
   }
   // قيمة قديمة حذفها المشرف من القوائم تبقى قابلة للاختيار في إعلانها
@@ -1625,7 +1765,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     if (v && ![...sel.options].some((o) => o.value === v)) sel.append(h("option", { value: v, text: tv(v) }));
     sel.value = v;
   }
-  function openEdit(it) {
+  function openEdit(it, focus) {
     editingId = it.id;
     clearPhotos();
     $("#addForm").reset();
@@ -1642,9 +1782,10 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     $("#f-desc").value = it.desc || "";
     $("#f-phone").value = it.phone || "";
     pending = (it.rawPhotos || it.photos || []).map((id) => ({ id, url: "/uploads/" + encodeURIComponent(id) }));
-    editingLive = isLive(it);
+    editingStatus = it.reviewStatus || "approved";
+    editingNote = it.reviewNote || "";
     closeOv("detailOv");
-    showForm();
+    showForm(focus);
   }
   $("#addBtn").addEventListener("click", openAdd);
 
@@ -1663,21 +1804,21 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
   $("#addForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     if (saving) return;
-    const err = $("#formErr");
     const val = (id) => $(id).value.trim();
     const mode = document.querySelector('input[name="mode"]:checked').value;
     const title = val("#f-title");
     const rent = Number(val("#f-rent")) || 0, sale = Number(val("#f-sale")) || 0, deposit = Number(val("#f-deposit")) || 0;
     const phone = val("#f-phone");
     const problems = [];
-    if (!title) problems.push(t("v.title"));
-    if (mode !== "sale" && rent <= 0) problems.push(t("v.rent"));
-    if (mode !== "rent" && sale <= 0) problems.push(t("v.sale"));
-    if (!phone) problems.push(t("v.phoneReq"));
-    else if (!/^\+?[\d\s-]{8,18}$/.test(phone)) problems.push(t("v.phone"));
-    if (!pending.length) problems.push(t("v.photo"));
-    if (problems.length) { err.textContent = problems.join(t("v.sep")) + "."; err.hidden = false; return; }
-    err.hidden = true;
+    if (!title) problems.push(["#f-title", t("v.title")]);
+    if (mode !== "sale" && rent <= 0) problems.push(["#f-rent", t("v.rent")]);
+    if (mode !== "rent" && sale <= 0) problems.push(["#f-sale", t("v.sale")]);
+    if (!phone) problems.push(["#f-phone", t("v.phoneReq")]);
+    else if (!/^\+?[\d\s-]{8,18}$/.test(phone)) problems.push(["#f-phone", t("v.phone")]);
+    if (!pending.length) problems.push(["#photos", t("v.photo")]);
+    else if (editingStatus === "needs_photos" && editingId && !pending.some((p) => p.file)) problems.push(["#photos", t("v.newPhotos")]);
+    if (problems.length) { showProblems(problems); return; }
+    clearInvalid();
 
     saving = true;
     const editing = editingId;
@@ -1700,17 +1841,20 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
       const saved = editing
         ? await api("PUT", "/api/dresses/" + encodeURIComponent(editing), item)
         : await api("POST", "/api/dresses", item);
-      clearPhotos(); editingId = null;
+      clearPhotos(); editingId = null; editingStatus = ""; editingNote = "";
       $("#addForm").reset(); syncMode(); resetPick();
       closeOv("addOv");
-      // رسائل المراجعة أطول من غيرها حتى تلحق صاحبة الإعلان تقرأها
-      if (!editing) toast(t("toast.submitted"), 8000);
-      else if (saved.resubmitted) toast(t("toast.resubmitted"), 6000);
-      else toast(t("toast.saved"));
       await loadDresses();
-      if (editing) openDetail(state.myId, editing);
+      // الإرسال للمراجعة: نافذة تأكيد تبقى حتى تغلقها صاحبة الإعلان بنفسها
+      if (!editing) showDone(false);
+      else if (saved.resubmitted) showDone(true);
+      else { toast(t("toast.saved")); openDetail(state.myId, editing); }
     } catch (ex) {
-      err.textContent = errMsg(ex); err.hidden = false;
+      const fields = ex.code === "validation" && ex.fields ? ex.fields.map((f) => SERVER_FIELDS[f]).filter(Boolean) : [];
+      if (fields.length) showProblems(fields.map((sel) => [sel, t("err.validation")]));
+      else if (ex.code === "new_photos_required") showProblems([["#photos", t("v.newPhotos")]]);
+      else if (ex.code === "photos_required") showProblems([["#photos", t("v.photo")]]);
+      else setBarErr(errMsg(ex));
     } finally {
       saving = false; btn.disabled = false; formTexts();
     }

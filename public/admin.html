@@ -327,7 +327,7 @@ tbody tr.click:hover td { background: var(--gold-soft); }
     ]);
     const split = h("div", { class: "kpis" }, [
       kpi("للإيجار", fmt(t.rent)), kpi("للبيع", fmt(t.sale)), kpi("محجوز / مُباع", fmt(t.unavailable)),
-      kpi("بانتظار المراجعة", fmt(t.pending)), kpi("مخفية من الإدارة", fmt(t.hidden)), kpi("مستخدمون محظورون", fmt(t.banned))
+      kpi("بانتظار المراجعة", fmt(t.pending)), kpi("بانتظار صور من صاحبتها", fmt(t.needs_photos)), kpi("مخفية من الإدارة", fmt(t.hidden)), kpi("مستخدمون محظورون", fmt(t.banned))
     ]);
 
     const chartBox = h("div", { class: "chart" });
@@ -588,6 +588,7 @@ tbody tr.click:hover td { background: var(--gold-soft); }
   function dressBadge(d) {
     if (d.reviewStatus === "pending") return h("span", { class: "badge gold", text: "قيد المراجعة" });
     if (d.reviewStatus === "rejected") return h("span", { class: "badge bad", text: "مرفوض" });
+    if (d.reviewStatus === "needs_photos") return h("span", { class: "badge gold", text: "مطلوب صور" });
     if (d.hidden) return h("span", { class: "badge bad", text: "مخفي" });
     if (d.ownerBanned) return h("span", { class: "badge bad", text: "صاحبه محظور" });
     if (d.status === "unavailable") return h("span", { class: "badge", text: d.mode === "sale" ? "مُباع" : "محجوز" });
@@ -736,17 +737,31 @@ tbody tr.click:hover td { background: var(--gold-soft); }
   }
   async function loadReviews() {
     loading("#tab-reviews");
-    let list;
-    try { list = (await api("GET", "/api/admin/reviews")).reviews; } catch (e) { fail(e); return; }
+    let list, waiting;
+    try { ({ reviews: list, waiting } = await api("GET", "/api/admin/reviews")); } catch (e) { fail(e); return; }
     setRevCount(list.length);
+    const parts = [];
     if (!list.length) {
-      $("#tab-reviews").replaceChildren(h("div", { class: "card empty" }, [h("h2", { text: "ما في طلبات معلّقة 🎉" }), h("p", { class: "hint", text: "أي فستان جديد بتضيفه وحدة من المستخدمات بيظهر هون لتجهّز صوره وتنشره." })]));
-      return;
+      parts.push(h("div", { class: "card empty" }, [h("h2", { text: "ما في طلبات معلّقة 🎉" }), h("p", { class: "hint", text: "أي فستان جديد بتضيفه وحدة من المستخدمات بيظهر هون لتجهّز صوره وتنشره." })]));
+    } else {
+      parts.push(h("p", { class: "hint", style: "margin:0;color:var(--muted);font-size:13.5px", text: fmt(list.length) + " طلب بانتظار تجهيز الصور · الأقدم أولاً. نزّل الصور الأصلية، عدّلها، ارفع النسخ النهائية، ثم انشر." }), ...list.map(reviewCard));
     }
-    $("#tab-reviews").replaceChildren(
-      h("p", { class: "hint", style: "margin:0;color:var(--muted);font-size:13.5px", text: fmt(list.length) + " طلب بانتظار تجهيز الصور · الأقدم أولاً. نزّل الصور الأصلية، عدّلها، ارفع النسخ النهائية، ثم انشر." }),
-      ...list.map(reviewCard)
-    );
+    // الطلبات اللي رجعت لصاحباتها: بترجع للقائمة فوق تلقائياً أول ما يرسلوا
+    if (waiting.length) {
+      parts.push(h("div", { class: "card" }, [
+        h("div", { class: "card-head" }, [h("div", null, [h("h2", { text: "بانتظار صاحبة الإعلان" }), h("p", { class: "hint", text: "طلبنا منها صور أوضح أو تعديل. أول ما ترسل بيرجع الطلب للقائمة فوق." })])]),
+        h("div", { class: "tbl-wrap" }, h("table", null, [
+          h("thead", null, h("tr", null, [h("th", { text: "الفستان" }), h("th", { text: "صاحبته" }), h("th", { text: "الحالة" }), h("th", { text: "الملاحظة" })])),
+          h("tbody", null, waiting.map((w) => h("tr", null, [
+            h("td", { text: w.title }),
+            h("td", null, [h("div", { text: w.ownerName }), h("div", { class: "u-mail", text: w.ownerEmail })]),
+            h("td", null, h("span", { class: w.status === "needs_photos" ? "badge gold" : "badge bad", text: w.status === "needs_photos" ? "مطلوب صور" : "مرفوض" })),
+            h("td", { style: "white-space:normal;min-width:220px", text: w.note || "—" })
+          ])))
+        ]))
+      ]));
+    }
+    $("#tab-reviews").replaceChildren(...parts);
   }
   function reviewCard(d) {
     let finals = [];
@@ -794,6 +809,16 @@ tbody tr.click:hover td { background: var(--gold-soft); }
         loadReviews();
       } catch (e) { publishBtn.disabled = false; fail(e); }
     });
+    const requestBtn = h("button", { class: "btn", type: "button", text: "📸 طلب صور أوضح", onclick: async () => {
+      const note = prompt("شو بدك من صاحبة الإعلان؟ رح تشوف هالملاحظة مع زر لرفع صور جديدة:", "الصور مش واضحة. ممكن ترفعي صور للفستان كامل بضوء النهار، من قدّام ومن ورا؟");
+      if (!note || !note.trim()) return;
+      try {
+        await api("POST", "/api/admin/dresses/" + encodeURIComponent(d.id) + "/request-photos", { note: note.trim() });
+        toast("انطلبت صور جديدة من صاحبة الإعلان");
+        loaded.dresses = false;
+        loadReviews();
+      } catch (e) { fail(e); }
+    } });
     const rejectBtn = h("button", { class: "btn danger", type: "button", text: "رفض مع ملاحظة", onclick: async () => {
       const note = prompt("سبب الرفض — رح يظهر لصاحبة الإعلان:", "الصور مش واضحة، ارفعي صور للفستان كامل بضوء النهار.");
       if (!note || !note.trim()) return;
@@ -845,7 +870,7 @@ tbody tr.click:hover td { background: var(--gold-soft); }
           ])
         ])
       ]),
-      h("div", { class: "rv-actions" }, [rejectBtn, h("div", { class: "grp" }, [publishBtn])])
+      h("div", { class: "rv-actions" }, [h("div", { class: "grp" }, [rejectBtn, requestBtn]), h("div", { class: "grp" }, [publishBtn])])
     ].filter(Boolean));
     return box;
   }
