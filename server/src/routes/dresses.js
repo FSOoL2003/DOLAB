@@ -71,7 +71,8 @@ function validate(b, keep = {}) {
   if (sale === null) errors.push("sale");
 
   const phone = String(b.phone || "").trim();
-  if (phone && !/^\+?[\d\s-]{8,18}$/.test(phone)) errors.push("phone");
+  // رقم التواصل إجباري: بدونه ما في طريقة للزبونة توصل لصاحبة الفستان
+  if (!/^\+?[\d\s-]{8,18}$/.test(phone)) errors.push("phone");
 
   const colorHex = b.colorHex == null || b.colorHex === "" ? null : String(b.colorHex);
   if (colorHex && !/^#[0-9a-f]{6}$/i.test(colorHex)) errors.push("colorHex");

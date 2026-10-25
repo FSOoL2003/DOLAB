@@ -659,7 +659,7 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
               <textarea class="ainp" id="f-desc" maxlength="600" data-i18n-ph="f.descPh" placeholder="القماش، الطول، هل يحتاج تعديل، هل يشمل الإكسسوارات…"></textarea>
             </label>
             <label class="af"><span><span data-i18n="f.phone">رقم التواصل (واتساب)</span> <em data-i18n="f.phoneHint">يظهر لكل من يفتح إعلانك</em></span>
-              <input class="ainp" id="f-phone" type="tel" dir="ltr" placeholder="05xxxxxxxx" inputmode="tel">
+              <input class="ainp" id="f-phone" type="tel" dir="ltr" placeholder="05xxxxxxxx" inputmode="tel" required aria-required="true">
             </label>
           </section>
 
@@ -771,13 +771,13 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
       "f.sub": "عبّي التفاصيل وارفعي صورك، وفريق دولاب بيجهّزها وبينشر فستانك خلال 24 ساعة.", "f.subEdit": "عدّلي أي تفصيل. تعديل النص والسعر بيظهر فوراً.",
       "f.photosReview": "فريق دولاب بيجهّز صورك بخلفية وإضاءة موحّدة قبل النشر. ارفعي صور واضحة للفستان كامل، من قدّام ومن ورا إذا أمكن.",
       "f.photosWarn": "تغيير الصور بيرجّع الإعلان للمراجعة لحد ما نجهّز الصور الجديدة.",
-      "v.photo": "أضيفي صورة واحدة على الأقل",
+      "v.photo": "أضيفي صورة واحدة على الأقل", "v.phoneReq": "اكتبي رقم التواصل (واتساب)",
       "tag.pending": "قيد المراجعة", "tag.rejected": "يحتاج تعديل",
       "rv.pendingT": "⏳ فستانك قيد المراجعة", "rv.pendingS": "فريق دولاب بيجهّز الصور وبينشر الإعلان خلال 24 ساعة. الإعلان ظاهر لك بس لحد ما ينشر.",
       "rv.rejectedT": "الإعلان يحتاج تعديل", "rv.rejectedS": "عدّلي الإعلان حسب الملاحظة وابعتيه من جديد:",
       "toast.submitted": "استلمنا فستانك! بنجهّز الصور وبننشره خلال 24 ساعة", "toast.resubmitted": "انحفظت التعديلات، والإعلان رجع للمراجعة",
       "f.s1": "عن الفستان", "f.s2": "السعر", "f.s3": "التفاصيل", "f.s6": "الوصف والتواصل",
-      "f.cover": "الغلاف", "f.dropTitle": "اضغطي لإضافة الصور أو اسحبيها هنا", "f.dropHint": "حتى 4 صور · الصورة الأولى هي غلاف الإعلان", "f.addMore": "صورة أخرى",
+      "f.cover": "الغلاف", "f.dropTitle": "اضغطي لإضافة الصور أو اسحبيها هنا", "f.dropHint": "حتى 4 صور · فريق دولاب بيختار صورة الغلاف", "f.addMore": "صورة أخرى",
       "f.preview": "معاينة الإعلان", "f.pvTitle": "اسم فستانك", "f.pvPrice": "اكتبي السعر",
       "f.tipTitle": "نصيحة", "f.tip": "الصور بضوء النهار على خلفية سادة، مع وصف واضح للمقاس والقماش، بتجيب تواصل أكتر.", "f.photos": "الصور", "f.photosNote": "حتى 4 صور",
       "f.descPh": "القماش، الطول، هل يحتاج تعديل، هل يشمل الإكسسوارات…",
@@ -842,13 +842,13 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
       "f.sub": "Fill in the details and upload your photos — the DOLAB team will prepare them and publish your dress within 24 hours.", "f.subEdit": "Change any detail. Text and price updates show instantly.",
       "f.photosReview": "The DOLAB team prepares your photos with a consistent background and lighting before publishing. Upload clear photos of the full dress, front and back if you can.",
       "f.photosWarn": "Changing the photos sends the listing back for review until the new photos are ready.",
-      "v.photo": "Add at least one photo",
+      "v.photo": "Add at least one photo", "v.phoneReq": "Enter a contact number (WhatsApp)",
       "tag.pending": "In review", "tag.rejected": "Needs changes",
       "rv.pendingT": "⏳ Your dress is in review", "rv.pendingS": "The DOLAB team is preparing the photos and will publish your listing within 24 hours. Only you can see it until then.",
       "rv.rejectedT": "Your listing needs changes", "rv.rejectedS": "Update the listing based on this note and send it again:",
       "toast.submitted": "Got it! We'll prepare the photos and publish within 24 hours", "toast.resubmitted": "Changes saved — the listing is back in review",
       "f.s1": "About the dress", "f.s2": "Price", "f.s3": "Details", "f.s6": "Description & contact",
-      "f.cover": "Cover", "f.dropTitle": "Tap to add photos, or drag them here", "f.dropHint": "Up to 4 photos · the first one is the cover", "f.addMore": "Add photo",
+      "f.cover": "Cover", "f.dropTitle": "Tap to add photos, or drag them here", "f.dropHint": "Up to 4 photos · the DOLAB team picks the cover", "f.addMore": "Add photo",
       "f.preview": "Listing preview", "f.pvTitle": "Your dress name", "f.pvPrice": "Add a price",
       "f.tipTitle": "Tip", "f.tip": "Daylight photos on a plain background, plus a clear note on size and fabric, get more messages.", "f.photos": "Photos", "f.photosNote": "up to 4",
       "f.descPh": "Fabric, length, alterations needed, accessories included…",
@@ -940,9 +940,9 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     if (keep && list.includes(keep)) sel.value = keep;
   }
   let toastT;
-  function toast(msg) {
+  function toast(msg, ms) {
     const el = $("#toast"); el.textContent = msg; el.hidden = false;
-    clearTimeout(toastT); toastT = setTimeout(() => (el.hidden = true), 2600);
+    clearTimeout(toastT); toastT = setTimeout(() => (el.hidden = true), ms || 2600);
   }
   function waNumber(phone) {
     let d = String(phone || "").replace(/\D/g, "");
@@ -1554,7 +1554,6 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     box.classList.toggle("no-photos", !pending.length);
     box.replaceChildren(...pending.map((p, i) => h("div", { class: "ph" }, [
       h("img", { src: p.url, alt: "" }),
-      i === 0 ? h("span", { class: "cover", text: t("f.cover") }) : null,
       h("button", { type: "button", "aria-label": t("f.removePhoto"), text: "✕", onclick: () => { if (p.file) URL.revokeObjectURL(p.url); pending.splice(i, 1); renderPhotos(); } })
     ])));
     if (pending.length < MAX_PHOTOS) {
@@ -1674,7 +1673,8 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
     if (!title) problems.push(t("v.title"));
     if (mode !== "sale" && rent <= 0) problems.push(t("v.rent"));
     if (mode !== "rent" && sale <= 0) problems.push(t("v.sale"));
-    if (phone && !/^\+?[\d\s-]{8,18}$/.test(phone)) problems.push(t("v.phone"));
+    if (!phone) problems.push(t("v.phoneReq"));
+    else if (!/^\+?[\d\s-]{8,18}$/.test(phone)) problems.push(t("v.phone"));
     if (!pending.length) problems.push(t("v.photo"));
     if (problems.length) { err.textContent = problems.join(t("v.sep")) + "."; err.hidden = false; return; }
     err.hidden = true;
@@ -1703,7 +1703,10 @@ legend { font-size: 13.5px; font-weight: 500; padding: 0; margin-bottom: 8px; }
       clearPhotos(); editingId = null;
       $("#addForm").reset(); syncMode(); resetPick();
       closeOv("addOv");
-      toast(!editing ? t("toast.submitted") : saved.resubmitted ? t("toast.resubmitted") : t("toast.saved"));
+      // رسائل المراجعة أطول من غيرها حتى تلحق صاحبة الإعلان تقرأها
+      if (!editing) toast(t("toast.submitted"), 8000);
+      else if (saved.resubmitted) toast(t("toast.resubmitted"), 6000);
+      else toast(t("toast.saved"));
       await loadDresses();
       if (editing) openDetail(state.myId, editing);
     } catch (ex) {
