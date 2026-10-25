@@ -37,7 +37,7 @@
 html, body { margin: 0; }
 body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 14.5px; line-height: 1.6; }
 [hidden] { display: none !important; }
-button, input, select { font: inherit; color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 a { color: inherit; }
 :focus-visible { outline: 1.5px solid var(--gold); outline-offset: 2px; }
@@ -176,6 +176,36 @@ tbody tr.click:hover td { background: var(--gold-soft); }
 .rv-actions .grp { display: flex; flex-wrap: wrap; gap: 8px; }
 .linkbtn { border: 0; background: none; color: var(--gold); font-size: 12.5px; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
 
+/* in-page dialog replacing the browser's prompt/confirm: photo header, icon, rounded note field, quick notes */
+.dlg-ov { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 16px; background: rgba(15, 14, 13, .55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); animation: dlgFade .2s ease both; }
+.dlg-ov.out { animation: dlgFade .18s ease reverse both; }
+.dlg { width: min(480px, 100%); background: var(--surface); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow); animation: dlgIn .32s cubic-bezier(.2,.8,.2,1) both; }
+.dlg-ov.out .dlg { animation: dlgIn .18s ease reverse both; }
+@keyframes dlgFade { from { opacity: 0; } }
+@keyframes dlgIn { from { opacity: 0; transform: translateY(14px) scale(.97); } }
+.dlg-head { position: relative; height: 112px; background: #141210 url("/hero.jpg") 84% 34% / cover; display: flex; align-items: flex-end; padding: 0 22px 16px; gap: 12px; }
+.dlg-head::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(20, 18, 16, .2), rgba(20, 18, 16, .78)); }
+.dlg-head > * { position: relative; }
+.dlg-ic { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-size: 22px; background: rgb(255 255 255 / .92); box-shadow: 0 6px 18px rgba(0, 0, 0, .25); flex: none; }
+.dlg-ic.danger { background: var(--danger); color: #FFF; }
+.dlg-head h2 { margin: 0; color: #FFF; font-weight: 400; font-size: 21px; line-height: 1.3; }
+.dlg-head .mark { position: absolute; top: 14px; inset-inline-start: 18px; width: 28px; height: 28px; opacity: .95; }
+.dlg-body { padding: 18px 22px 6px; display: grid; gap: 12px; }
+.dlg-body p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.75; }
+.dlg-body p b { color: var(--fg); font-weight: 500; }
+.dlg-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.dlg-quick button { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 5px 12px; font-size: 12.5px; color: var(--fg); transition: border-color .2s, color .2s, background-color .2s; }
+.dlg-quick button:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-soft); }
+.dlg-field { position: relative; }
+.dlg-input { width: 100%; min-height: 96px; resize: vertical; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px 26px; background: var(--surface); font-size: 14.5px; line-height: 1.7; transition: border-color .2s, box-shadow .2s; }
+.dlg-input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 4px color-mix(in srgb, var(--gold) 16%, transparent); }
+.dlg-input.invalid { border-color: var(--danger); box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 12%, transparent); }
+.dlg-count { position: absolute; bottom: 8px; inset-inline-end: 12px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dlg-foot { display: flex; gap: 10px; justify-content: flex-end; padding: 14px 22px 20px; }
+.dlg-foot .btn { padding: 10px 22px; font-size: 14px; }
+.btn.danger-solid { background: var(--danger); color: #FFF; border-color: var(--danger); }
+.btn.danger-solid:hover { box-shadow: 0 10px 26px -8px color-mix(in srgb, var(--danger) 60%, transparent); }
+
 .gate { max-width: 460px; margin: 12vh auto; text-align: center; display: grid; gap: 14px; justify-items: center; padding: 0 16px; }
 .gate h1 { font-weight: 300; margin: 0; }
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--btn); color: var(--btn-fg); padding: 10px 20px; font-size: 13.5px; z-index: 60; box-shadow: var(--shadow); }
@@ -277,6 +307,63 @@ tbody tr.click:hover td { background: var(--gold-soft); }
     if (e && e.code === "admin_protected") { toast("لا يمكن تطبيق هذا على حساب مشرف."); return; }
     toast("تعذّر تنفيذ الطلب، حاول مرة أخرى.");
   }
+
+  // ---------- dialog ----------
+  // بديل prompt/confirm بتصميم دولاب. مع input يرجع النص، وبدونه يرجع true، والإلغاء يرجع null
+  function ask(o) {
+    return new Promise((resolve) => {
+      const prev = document.activeElement;
+      const ta = o.input ? h("textarea", { class: "dlg-input", maxlength: 300, placeholder: o.input.placeholder || "" }) : null;
+      const count = ta ? h("span", { class: "dlg-count" }) : null;
+      const syncCount = () => { if (ta) count.textContent = fmt(ta.value.length) + " / 300"; };
+      if (ta) { ta.value = o.input.value || ""; syncCount(); ta.addEventListener("input", () => { ta.classList.remove("invalid"); syncCount(); }); }
+      const ok = h("button", { class: "btn " + (o.danger ? "danger-solid" : "primary"), type: "button", text: o.okText || "تأكيد" });
+      const cancel = h("button", { class: "btn", type: "button", text: "إلغاء" });
+      const ov = h("div", { class: "dlg-ov" });
+      let closed = false;
+      const done = (v) => {
+        if (closed) return;
+        closed = true;
+        document.removeEventListener("keydown", onKey, true);
+        ov.classList.add("out");
+        setTimeout(() => ov.remove(), 180);
+        if (prev && prev.focus) prev.focus();
+        resolve(v);
+      };
+      const submit = () => {
+        if (!ta) return done(true);
+        const v = ta.value.trim();
+        if (!v) { ta.classList.add("invalid"); ta.focus(); return; }
+        done(v);
+      };
+      // نلتقط Escape قبل لوحة المستخدم حتى لا تُغلق معها
+      function onKey(e) {
+        if (e.key === "Escape") { e.stopPropagation(); e.preventDefault(); done(null); }
+        else if (e.key === "Enter" && (!ta || e.ctrlKey || e.metaKey)) { e.preventDefault(); submit(); }
+      }
+      ok.addEventListener("click", submit);
+      cancel.addEventListener("click", () => done(null));
+      ov.addEventListener("click", (e) => { if (e.target === ov) done(null); });
+      document.addEventListener("keydown", onKey, true);
+      ov.append(h("div", { class: "dlg", role: "dialog", "aria-modal": "true", "aria-label": o.title }, [
+        h("div", { class: "dlg-head" }, [
+          h("img", { class: "mark", src: "/favicon.svg?v=2", alt: "" }),
+          h("span", { class: "dlg-ic" + (o.danger ? " danger" : ""), "aria-hidden": "true", text: o.icon || "✦" }),
+          h("h2", { text: o.title })
+        ]),
+        h("div", { class: "dlg-body" }, [
+          o.text ? h("p", null, o.text) : null,
+          o.quick && ta ? h("div", { class: "dlg-quick" }, o.quick.map((q) => h("button", { type: "button", text: q, onclick: () => { ta.value = q; ta.classList.remove("invalid"); syncCount(); ta.focus(); } }))) : null,
+          ta ? h("div", { class: "dlg-field" }, [ta, count]) : null
+        ]),
+        h("div", { class: "dlg-foot" }, [cancel, ok])
+      ]));
+      document.body.append(ov);
+      (ta || ok).focus();
+      if (ta) ta.setSelectionRange(ta.value.length, ta.value.length);
+    });
+  }
+  const strong = (s) => h("b", { text: s });
 
   // ---------- gate ----------
   function showGate(title, msg) {
@@ -522,11 +609,11 @@ tbody tr.click:hover td { background: var(--gold-soft); }
     const u = d.user;
     const actions = u.isAdmin ? null : h("div", { class: "row-actions" }, [
       h("button", { class: "btn", type: "button", text: u.bannedAt ? "إلغاء الحظر" : "حظر", onclick: async () => {
-        if (!u.bannedAt && !confirm("حظر " + u.name + "؟ سيُسجَّل خروجه وتختفي إعلاناته من الموقع.")) return;
+        if (!u.bannedAt && !(await ask({ icon: "⛔", danger: true, title: "حظر " + u.name + "؟", okText: "حظر الحساب", text: ["بيتسجّل خروجها فوراً، وبتختفي ", strong("كل إعلاناتها"), " من الموقع. بتقدر تلغي الحظر بأي وقت."] }))) return;
         try { await api("PATCH", "/api/admin/users/" + u.id, { banned: !u.bannedAt }); toast(u.bannedAt ? "تم إلغاء الحظر" : "تم الحظر"); invalidate(); openUser(u.id); loadUsers(); } catch (e) { fail(e); }
       } }),
       h("button", { class: "btn danger", type: "button", text: "حذف الحساب", onclick: async () => {
-        if (!confirm("حذف حساب " + u.name + " نهائياً مع كل إعلاناته وصوره؟ لا يمكن التراجع.")) return;
+        if (!(await ask({ icon: "🗑️", danger: true, title: "حذف حساب " + u.name + "؟", okText: "حذف نهائي", text: ["بينحذف الحساب مع ", strong("كل إعلاناته وصوره"), ". هالخطوة ما بتنرجع."] }))) return;
         try { await api("DELETE", "/api/admin/users/" + u.id); toast("تم حذف الحساب"); closeDrawer(); invalidate(); loadUsers(); } catch (e) { fail(e); }
       } })
     ]);
@@ -627,7 +714,7 @@ tbody tr.click:hover td { background: var(--gold-soft); }
             try { await api("PATCH", "/api/admin/dresses/" + encodeURIComponent(d.id), { hidden: !d.hidden }); d.hidden = !d.hidden; toast(d.hidden ? "أُخفي الإعلان من الموقع" : "الإعلان ظاهر الآن"); loaded.overview = false; draw(); } catch (e) { fail(e); }
           } }),
           h("button", { class: "btn sm danger", type: "button", text: "حذف", onclick: async () => {
-            if (!confirm("حذف إعلان \"" + d.title + "\" نهائياً؟")) return;
+            if (!(await ask({ icon: "🗑️", danger: true, title: "حذف الإعلان؟", okText: "حذف نهائي", text: ["بينحذف ", strong("«" + d.title + "»"), " مع صوره من الموقع. هالخطوة ما بتنرجع."] }))) return;
             try { await api("DELETE", "/api/dresses/" + encodeURIComponent(d.id)); dresses = dresses.filter((x) => x !== d); toast("تم حذف الإعلان"); loaded.overview = false; loaded.users = false; draw(); } catch (e) { fail(e); }
           } })
         ]))
@@ -810,8 +897,13 @@ tbody tr.click:hover td { background: var(--gold-soft); }
       } catch (e) { publishBtn.disabled = false; fail(e); }
     });
     const requestBtn = h("button", { class: "btn", type: "button", text: "📸 طلب صور أوضح", onclick: async () => {
-      const note = prompt("شو بدك من صاحبة الإعلان؟ رح تشوف هالملاحظة مع زر لرفع صور جديدة:", "الصور مش واضحة. ممكن ترفعي صور للفستان كامل بضوء النهار، من قدّام ومن ورا؟");
-      if (!note || !note.trim()) return;
+      const note = await ask({
+        icon: "📸", title: "طلب صور أوضح", okText: "إرسال الطلب",
+        text: ["رح تشوف ", strong(d.ownerName), " هالملاحظة على إعلانها، مع زر لرفع صور جديدة. أول ما ترسلها بيرجع الطلب لقائمتك."],
+        quick: ["الصور مش واضحة، صوري الفستان كامل بضوء النهار", "محتاجين صورة للفستان من ورا", "محتاجين صورة قريبة للقماش والتفاصيل", "الإضاءة ضعيفة، صوري جنب شباك بالنهار", "صوري الفستان معلّق على خلفية سادة"],
+        input: { placeholder: "اكتب ملاحظتك لصاحبة الإعلان…" }
+      });
+      if (!note) return;
       try {
         await api("POST", "/api/admin/dresses/" + encodeURIComponent(d.id) + "/request-photos", { note: note.trim() });
         toast("انطلبت صور جديدة من صاحبة الإعلان");
@@ -820,8 +912,13 @@ tbody tr.click:hover td { background: var(--gold-soft); }
       } catch (e) { fail(e); }
     } });
     const rejectBtn = h("button", { class: "btn danger", type: "button", text: "رفض مع ملاحظة", onclick: async () => {
-      const note = prompt("سبب الرفض — رح يظهر لصاحبة الإعلان:", "الصور مش واضحة، ارفعي صور للفستان كامل بضوء النهار.");
-      if (!note || !note.trim()) return;
+      const note = await ask({
+        icon: "⛔", danger: true, title: "رفض الإعلان", okText: "رفض وإرسال السبب",
+        text: ["السبب رح يظهر لـ ", strong(d.ownerName), "، وبتقدر تعدّل الإعلان وتبعته من جديد."],
+        quick: ["المعلومات ناقصة أو غير صحيحة", "الصور مش لفستان حقيقي أو مأخوذة من الإنترنت", "الإعلان مخالف لشروط الموقع", "السعر غير واضح أو غير منطقي"],
+        input: { placeholder: "اكتب سبب الرفض…" }
+      });
+      if (!note) return;
       try {
         await api("POST", "/api/admin/dresses/" + encodeURIComponent(d.id) + "/reject", { note: note.trim() });
         toast("تم إرجاع الإعلان لصاحبته");
