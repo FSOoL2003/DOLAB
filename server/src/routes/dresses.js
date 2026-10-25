@@ -12,8 +12,10 @@ const router = express.Router();
 
 const SELECT = "SELECT d.*, u.name AS owner_name FROM dresses d JOIN users u ON u.id = d.owner_id";
 
-function toClient(r) {
-  return {
+// صاحبة الإعلان وحدها ترى صورها الخام وملاحظة المراجعة
+function toClient(r, viewerId) {
+  const own = viewerId != null && String(r.owner_id) === String(viewerId);
+  const out = {
     id: r.id,
     owner: String(r.owner_id),
     ownerName: r.owner_name,
@@ -32,8 +34,14 @@ function toClient(r) {
     phone: r.phone,
     photos: r.photos,
     status: r.status,
+    reviewStatus: r.review_status,
     createdAt: r.created_at.getTime(),
   };
+  if (own) {
+    out.rawPhotos = r.raw_photos || r.photos;
+    out.reviewNote = r.review_note;
+  }
+  return out;
 }
 
 function money(v, min, max) {
@@ -88,15 +96,31 @@ function validate(b, keep = {}) {
   };
 }
 
+// يتأكد أن الصور الجديدة مرفوعة من هذا المستخدم وغير مربوطة بإعلان آخر
+async function ownFreshUploads(client, userId, ids) {
+  if (!ids.length) return true;
+  const { rows } = await client.query(
+    "SELECT id FROM uploads WHERE owner_id = $1 AND dress_id IS NULL AND id = ANY($2)",
+    [userId, ids]
+  );
+  return rows.length === ids.length;
+}
+
 router.get("/", async (req, res) => {
-  // الإعلانات المخفية من المشرف وإعلانات المحظورين لا تظهر للعامة
-  const { rows } = await pool.query(`${SELECT} WHERE NOT d.hidden AND u.banned_at IS NULL ORDER BY d.created_at DESC LIMIT 2000`);
-  res.json({ dresses: rows.map(toClient) });
+  // للعامة: المنشور فقط. وصاحبة الإعلان ترى إعلاناتها كلها (قيد المراجعة والمرفوضة أيضاً)
+  const me = req.user ? Number(req.user.id) : null;
+  const { rows } = await pool.query(
+    `${SELECT} WHERE (d.review_status = 'approved' AND NOT d.hidden AND u.banned_at IS NULL) OR d.owner_id = $1
+     ORDER BY d.created_at DESC LIMIT 2000`,
+    [me]
+  );
+  res.json({ dresses: rows.map((r) => toClient(r, me)) });
 });
 
 router.post("/", requireUser, async (req, res) => {
   const { errors, value: v } = validate(req.body || {});
   if (errors.length) return res.status(400).json({ error: "validation", fields: errors });
+  if (!v.photos.length) return res.status(400).json({ error: "photos_required" });
 
   const id = crypto.randomBytes(8).toString("hex");
   const client = await pool.connect();
@@ -109,22 +133,18 @@ router.post("/", requireUser, async (req, res) => {
       await client.query("ROLLBACK");
       return res.status(409).json({ error: "limit_reached" });
     }
-    if (v.photos.length) {
-      const { rows } = await client.query(
-        "SELECT id FROM uploads WHERE owner_id = $1 AND dress_id IS NULL AND id = ANY($2)",
-        [req.user.id, v.photos]
-      );
-      if (rows.length !== v.photos.length) {
-        await client.query("ROLLBACK");
-        return res.status(400).json({ error: "bad_photos" });
-      }
+    if (!(await ownFreshUploads(client, req.user.id, v.photos))) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "bad_photos" });
     }
+    // الإعلان الجديد ينتظر أن يجهّز المشرف صوره
     await client.query(
-      `INSERT INTO dresses (id, owner_id, title, mode, rent, deposit, sale, size, occasion, condition, city, color, color_hex, description, phone, photos)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+      `INSERT INTO dresses (id, owner_id, title, mode, rent, deposit, sale, size, occasion, condition, city, color, color_hex,
+         description, phone, photos, raw_photos, review_status, submitted_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, '{}', $16, 'pending', now())`,
       [id, req.user.id, v.title, v.mode, v.rent, v.deposit, v.sale, v.size, v.occasion, v.condition, v.city, v.color, v.colorHex, v.description, v.phone, v.photos]
     );
-    if (v.photos.length) await client.query("UPDATE uploads SET dress_id = $1 WHERE id = ANY($2)", [id, v.photos]);
+    await client.query("UPDATE uploads SET dress_id = $1 WHERE id = ANY($2)", [id, v.photos]);
     await client.query("COMMIT");
   } catch (e) {
     await client.query("ROLLBACK");
@@ -134,43 +154,54 @@ router.post("/", requireUser, async (req, res) => {
   }
 
   const { rows } = await pool.query(`${SELECT} WHERE d.id = $1`, [id]);
-  res.status(201).json({ dress: toClient(rows[0]) });
+  res.status(201).json({ dress: toClient(rows[0], req.user.id) });
 });
 
-// تعديل الإعلان كاملاً — لصاحبه فقط. الصور: القديمة التي بقيت + صور جديدة مرفوعة
+// تعديل الإعلان — لصاحبته فقط. الصور هنا هي الخام: تغييرها يعيد الإعلان للمراجعة.
+// تعديل النص أو السعر لإعلان منشور يظهر مباشرة. والمرفوض يعود للمراجعة بأي تعديل.
 router.put("/:id", requireUser, async (req, res) => {
   const { rows: [cur] } = await pool.query("SELECT size, occasion, condition, city, color FROM dresses WHERE id = $1", [req.params.id]);
   const { errors, value: v } = validate(req.body || {}, cur || {});
   if (errors.length) return res.status(400).json({ error: "validation", fields: errors });
+  if (!v.photos.length) return res.status(400).json({ error: "photos_required" });
 
-  let removed = [];
+  let removed = [], resubmitted = false;
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    const { rows: [dress] } = await client.query("SELECT owner_id, photos FROM dresses WHERE id = $1 FOR UPDATE", [req.params.id]);
+    const { rows: [dress] } = await client.query(
+      "SELECT owner_id, photos, raw_photos, review_status FROM dresses WHERE id = $1 FOR UPDATE",
+      [req.params.id]
+    );
     if (!dress || String(dress.owner_id) !== req.user.id) {
       await client.query("ROLLBACK");
       return res.status(404).json({ error: "not_found" });
     }
-    const added = v.photos.filter((p) => !dress.photos.includes(p));
-    if (added.length) {
-      const { rows } = await client.query(
-        "SELECT id FROM uploads WHERE owner_id = $1 AND dress_id IS NULL AND id = ANY($2)",
-        [req.user.id, added]
-      );
-      if (rows.length !== added.length) {
-        await client.query("ROLLBACK");
-        return res.status(400).json({ error: "bad_photos" });
-      }
-      await client.query("UPDATE uploads SET dress_id = $1 WHERE id = ANY($2)", [req.params.id, added]);
+    const raw = dress.raw_photos || dress.photos;
+    const added = v.photos.filter((p) => !raw.includes(p));
+    if (!(await ownFreshUploads(client, req.user.id, added))) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "bad_photos" });
     }
-    removed = dress.photos.filter((p) => !v.photos.includes(p));
+    if (added.length) await client.query("UPDATE uploads SET dress_id = $1 WHERE id = ANY($2)", [req.params.id, added]);
+
+    const photosChanged = added.length > 0 || raw.some((p) => !v.photos.includes(p));
+    const status = photosChanged || dress.review_status === "rejected" ? "pending" : dress.review_status;
+    resubmitted = status === "pending" && dress.review_status !== "pending";
+
+    // نحذف الخام المحذوف، إلا إذا كان المشرف استخدمه كصورة نهائية
+    removed = raw.filter((p) => !v.photos.includes(p) && !dress.photos.includes(p));
     if (removed.length) await client.query("DELETE FROM uploads WHERE id = ANY($1)", [removed]);
+
     await client.query(
       `UPDATE dresses SET title = $2, mode = $3, rent = $4, deposit = $5, sale = $6, size = $7, occasion = $8,
-         condition = $9, city = $10, color = $11, description = $12, phone = $13, photos = $14, color_hex = $15
+         condition = $9, city = $10, color = $11, description = $12, phone = $13, raw_photos = $14, color_hex = $15,
+         review_status = $16,
+         review_note = CASE WHEN $16 = 'pending' THEN NULL ELSE review_note END,
+         submitted_at = CASE WHEN $17 THEN now() ELSE submitted_at END
        WHERE id = $1`,
-      [req.params.id, v.title, v.mode, v.rent, v.deposit, v.sale, v.size, v.occasion, v.condition, v.city, v.color, v.description, v.phone, v.photos, v.colorHex]
+      [req.params.id, v.title, v.mode, v.rent, v.deposit, v.sale, v.size, v.occasion, v.condition, v.city, v.color,
+        v.description, v.phone, v.photos, v.colorHex, status, resubmitted]
     );
     await client.query("COMMIT");
   } catch (e) {
@@ -182,10 +213,10 @@ router.put("/:id", requireUser, async (req, res) => {
   await removeFiles(removed);
 
   const { rows } = await pool.query(`${SELECT} WHERE d.id = $1`, [req.params.id]);
-  res.json({ dress: toClient(rows[0]) });
+  res.json({ dress: toClient(rows[0], req.user.id), resubmitted });
 });
 
-// صاحب الإعلان فقط يغيّر حالته (متاح / محجوز أو مُباع)
+// صاحبة الإعلان فقط تغيّر حالته (متاح / محجوز أو مُباع)
 router.patch("/:id", requireUser, async (req, res) => {
   const status = (req.body || {}).status;
   if (status !== "available" && status !== "unavailable") return res.status(400).json({ error: "validation" });
@@ -197,14 +228,14 @@ router.patch("/:id", requireUser, async (req, res) => {
   res.json({ ok: true });
 });
 
-// صاحب الإعلان أو المشرف يحذفه
+// صاحبة الإعلان أو المشرف يحذفه
 router.delete("/:id", requireUser, async (req, res) => {
-  const { rows } = await pool.query("SELECT owner_id, photos FROM dresses WHERE id = $1", [req.params.id]);
+  const { rows } = await pool.query("SELECT owner_id, photos, raw_photos FROM dresses WHERE id = $1", [req.params.id]);
   const dress = rows[0];
   if (!dress) return res.status(404).json({ error: "not_found" });
   if (String(dress.owner_id) !== req.user.id && !req.user.isAdmin) return res.status(403).json({ error: "forbidden" });
   await pool.query("DELETE FROM dresses WHERE id = $1", [req.params.id]);
-  await removeFiles(dress.photos);
+  await removeFiles([...new Set([...(dress.photos || []), ...(dress.raw_photos || [])])]);
   res.json({ ok: true });
 });
 

@@ -54,6 +54,16 @@ ALTER TABLE dresses ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT FAL
 -- الدرجة الدقيقة المختارة من خريطة الألوان (color يبقى اسم أقرب لون للبحث)
 ALTER TABLE dresses ADD COLUMN IF NOT EXISTS color_hex TEXT;
 
+-- مراجعة الصور: صاحبة الإعلان ترفع صوراً خاماً (raw_photos)، والمشرف يجهّز الصور النهائية (photos) وينشر
+-- الإعلانات القائمة قبل هذا النظام تبقى منشورة، وصورها الحالية تُعتبر خاماً ونهائية معاً
+ALTER TABLE dresses ADD COLUMN IF NOT EXISTS raw_photos TEXT[];
+UPDATE dresses SET raw_photos = photos WHERE raw_photos IS NULL;
+ALTER TABLE dresses ADD COLUMN IF NOT EXISTS review_status TEXT NOT NULL DEFAULT 'approved';
+ALTER TABLE dresses ADD COLUMN IF NOT EXISTS review_note TEXT;
+ALTER TABLE dresses ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ;
+ALTER TABLE dresses ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS dresses_review_idx ON dresses(review_status, submitted_at) WHERE review_status <> 'approved';
+
 -- إعدادات قابلة للتعديل من اللوحة (مثل قوائم المقاسات والمدن)
 CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,

@@ -25,7 +25,7 @@ app.get("/healthz", (req, res) => res.json({ ok: true }));
 
 // خريطة الموقع لمحركات البحث — آخر تحديث = آخر فستان أُضيف
 app.get("/sitemap.xml", async (req, res) => {
-  const { rows } = await pool.query("SELECT max(created_at) AS last FROM dresses WHERE NOT hidden");
+  const { rows } = await pool.query("SELECT max(created_at) AS last FROM dresses WHERE NOT hidden AND review_status = 'approved'");
   const last = (rows[0].last || new Date()).toISOString().slice(0, 10);
   const base = `${req.protocol}://${req.get("host")}`;
   const url = (loc, lang) => `  <url>

@@ -152,6 +152,30 @@ tbody tr.click:hover td { background: var(--gold-soft); }
 .add-row input[type="color"] { width: 42px; height: 38px; padding: 2px; border: 1px solid var(--line); background: var(--surface); }
 .savebar { position: sticky; bottom: 0; background: var(--surface); border: 1px solid var(--gold); padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; box-shadow: var(--shadow); }
 
+/* review queue */
+.count-badge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--danger); color: #FFF; font-size: 11.5px; font-weight: 600; margin-inline-start: 4px; vertical-align: 2px; }
+.rv { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: grid; gap: 16px; }
+.rv-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: flex-start; justify-content: space-between; }
+.rv-head h2 { margin: 0; font-size: 18px; font-weight: 500; }
+.rv-meta { color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.rv-facts { display: flex; flex-wrap: wrap; gap: 6px; }
+.rv-facts span { border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; }
+.rv-facts i { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--line); display: inline-block; }
+.rv-desc { margin: 0; font-size: 13.5px; white-space: pre-wrap; color: var(--fg); background: var(--tile); border-radius: 12px; padding: 10px 14px; }
+.rv-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.rv-box { border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 10px; align-content: start; }
+.rv-box h3 { margin: 0; font-size: 14px; font-weight: 500; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.rv-photos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.rv-ph { position: relative; aspect-ratio: 3 / 4; border-radius: 10px; overflow: hidden; background: var(--tile); }
+.rv-ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rv-ph a, .rv-ph button { position: absolute; bottom: 6px; inset-inline-start: 6px; background: rgba(20, 18, 16, .72); color: #FFF; border: 0; border-radius: 999px; font-size: 11px; padding: 2px 9px; text-decoration: none; cursor: pointer; }
+.rv-ph .cover { position: absolute; top: 6px; inset-inline-start: 6px; background: var(--gold); color: #FFF; border-radius: 999px; font-size: 10.5px; padding: 1px 8px; }
+.rv-drop { aspect-ratio: 3 / 4; border-radius: 10px; border: 1.5px dashed color-mix(in srgb, var(--muted) 55%, transparent); display: grid; place-items: center; text-align: center; color: var(--muted); font-size: 12px; cursor: pointer; padding: 6px; transition: border-color .2s, background-color .2s; }
+.rv-drop:hover, .rv-drop.drag { border-color: var(--gold); background: var(--gold-soft); color: var(--gold); }
+.rv-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; border-top: 1px solid var(--line); padding-top: 14px; }
+.rv-actions .grp { display: flex; flex-wrap: wrap; gap: 8px; }
+.linkbtn { border: 0; background: none; color: var(--gold); font-size: 12.5px; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+
 .gate { max-width: 460px; margin: 12vh auto; text-align: center; display: grid; gap: 14px; justify-items: center; padding: 0 16px; }
 .gate h1 { font-weight: 300; margin: 0; }
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--btn); color: var(--btn-fg); padding: 10px 20px; font-size: 13.5px; z-index: 60; box-shadow: var(--shadow); }
@@ -180,11 +204,13 @@ tbody tr.click:hover td { background: var(--gold-soft); }
 <main class="wrap" id="main" hidden>
   <nav class="tabs" role="tablist">
     <button role="tab" data-tab="overview" aria-selected="true">نظرة عامة</button>
+    <button role="tab" data-tab="reviews" aria-selected="false">طلبات النشر <span class="count-badge" id="revCount" hidden></span></button>
     <button role="tab" data-tab="users" aria-selected="false">المستخدمون</button>
     <button role="tab" data-tab="dresses" aria-selected="false">الإعلانات</button>
     <button role="tab" data-tab="fields" aria-selected="false">الحقول</button>
   </nav>
   <section class="panel" id="tab-overview"></section>
+  <section class="panel" id="tab-reviews" hidden></section>
   <section class="panel" id="tab-users" hidden></section>
   <section class="panel" id="tab-dresses" hidden></section>
   <section class="panel" id="tab-fields" hidden></section>
@@ -301,7 +327,7 @@ tbody tr.click:hover td { background: var(--gold-soft); }
     ]);
     const split = h("div", { class: "kpis" }, [
       kpi("للإيجار", fmt(t.rent)), kpi("للبيع", fmt(t.sale)), kpi("محجوز / مُباع", fmt(t.unavailable)),
-      kpi("مخفية من الإدارة", fmt(t.hidden)), kpi("مستخدمون محظورون", fmt(t.banned))
+      kpi("بانتظار المراجعة", fmt(t.pending)), kpi("مخفية من الإدارة", fmt(t.hidden)), kpi("مستخدمون محظورون", fmt(t.banned))
     ]);
 
     const chartBox = h("div", { class: "chart" });
@@ -560,6 +586,8 @@ tbody tr.click:hover td { background: var(--gold-soft); }
     { key: "actions", label: "" }
   ];
   function dressBadge(d) {
+    if (d.reviewStatus === "pending") return h("span", { class: "badge gold", text: "قيد المراجعة" });
+    if (d.reviewStatus === "rejected") return h("span", { class: "badge bad", text: "مرفوض" });
     if (d.hidden) return h("span", { class: "badge bad", text: "مخفي" });
     if (d.ownerBanned) return h("span", { class: "badge bad", text: "صاحبه محظور" });
     if (d.status === "unavailable") return h("span", { class: "badge", text: d.mode === "sale" ? "مُباع" : "محجوز" });
@@ -569,7 +597,7 @@ tbody tr.click:hover td { background: var(--gold-soft); }
     loading("#tab-dresses");
     try { dresses = (await api("GET", "/api/admin/dresses")).dresses; } catch (e) { fail(e); return; }
     const search = h("input", { class: "search", type: "search", placeholder: "بحث بالاسم أو المدينة أو صاحب الإعلان", "aria-label": "بحث", value: dressQ });
-    const FILTERS = [["all", "الكل"], ["visible", "ظاهرة"], ["hidden", "مخفية"], ["unavailable", "محجوزة / مُباعة"]];
+    const FILTERS = [["all", "الكل"], ["visible", "ظاهرة"], ["review", "قيد المراجعة"], ["hidden", "مخفية"], ["unavailable", "محجوزة / مُباعة"]];
     const seg = h("div", { class: "seg", role: "group" }, FILTERS.map(([k, l]) => h("button", { type: "button", "aria-pressed": String(k === dressFilter), text: l, onclick: (e) => {
       dressFilter = k; seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === e.currentTarget))); draw();
     } })));
@@ -577,7 +605,8 @@ tbody tr.click:hover td { background: var(--gold-soft); }
     const draw = () => {
       const q = dressQ.toLowerCase();
       const rows = dresses.filter((d) => {
-        if (dressFilter === "visible" && (d.hidden || d.ownerBanned)) return false;
+        if (dressFilter === "visible" && (d.hidden || d.ownerBanned || d.reviewStatus !== "approved")) return false;
+        if (dressFilter === "review" && d.reviewStatus === "approved") return false;
         if (dressFilter === "hidden" && !d.hidden) return false;
         if (dressFilter === "unavailable" && d.status !== "unavailable") return false;
         return !q || [d.title, d.city, d.ownerName, d.ownerEmail, d.occasion, d.color].join(" ").toLowerCase().includes(q);
@@ -670,7 +699,158 @@ tbody tr.click:hover td { background: var(--gold-soft); }
   }
   addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
 
-  const LOADERS = { overview: loadOverview, users: loadUsers, dresses: loadDressesTab, fields: loadFields };
+  // ---------- publish requests ----------
+  // صاحبة الإعلان رفعت صوراً خاماً؛ هنا ننزّلها، نرفع النسخ المعدّلة، ثم ننشر أو نرفض
+  const photoUrl = (id) => "/uploads/" + encodeURIComponent(id);
+  const COLOR_HEX = {};
+  function setRevCount(n) {
+    const b = $("#revCount");
+    b.textContent = fmt(n);
+    b.hidden = !n;
+  }
+  async function compressFinal(file) {
+    // نخفف الصور الكبيرة فقط، ونحافظ على جودة عالية لأنها الصورة المنشورة
+    if (file.size < 2.5 * 1024 * 1024) return file;
+    try {
+      const bmp = await createImageBitmap(file);
+      const s = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+      c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+      return (await new Promise((r) => c.toBlob(r, "image/jpeg", 0.9))) || file;
+    } catch (e) { return file; }
+  }
+  async function uploadFinal(file) {
+    const fd = new FormData();
+    fd.append("photo", await compressFinal(file), "photo");
+    const res = await fetch("/api/uploads", { method: "POST", body: fd, credentials: "same-origin" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { const e = new Error(data.error || "upload"); e.code = data.error || (res.status === 413 ? "too_large" : "upload"); throw e; }
+    return data.id;
+  }
+  function downloadAll(ids, title) {
+    ids.forEach((id, i) => setTimeout(() => {
+      const a = h("a", { href: photoUrl(id), download: "dolab-" + (title || "dress").replace(/\s+/g, "-") + "-" + (i + 1) + id.slice(id.lastIndexOf(".")) });
+      document.body.append(a); a.click(); a.remove();
+    }, i * 350));
+  }
+  async function loadReviews() {
+    loading("#tab-reviews");
+    let list;
+    try { list = (await api("GET", "/api/admin/reviews")).reviews; } catch (e) { fail(e); return; }
+    setRevCount(list.length);
+    if (!list.length) {
+      $("#tab-reviews").replaceChildren(h("div", { class: "card empty" }, [h("h2", { text: "ما في طلبات معلّقة 🎉" }), h("p", { class: "hint", text: "أي فستان جديد بتضيفه وحدة من المستخدمات بيظهر هون لتجهّز صوره وتنشره." })]));
+      return;
+    }
+    $("#tab-reviews").replaceChildren(
+      h("p", { class: "hint", style: "margin:0;color:var(--muted);font-size:13.5px", text: fmt(list.length) + " طلب بانتظار تجهيز الصور · الأقدم أولاً. نزّل الصور الأصلية، عدّلها، ارفع النسخ النهائية، ثم انشر." }),
+      ...list.map(reviewCard)
+    );
+  }
+  function reviewCard(d) {
+    let finals = [];
+    const box = h("div", { class: "rv" });
+    const finalsGrid = h("div", { class: "rv-photos" });
+    const publishBtn = h("button", { class: "btn primary", type: "button", text: "نشر الإعلان" });
+    const fileInput = h("input", { type: "file", accept: "image/*", multiple: true, hidden: true });
+    const finalsCount = h("span", { class: "hint num" });
+    let busy = false;
+
+    function drawFinals() {
+      finalsCount.textContent = fmt(finals.length) + " / 4";
+      finalsGrid.replaceChildren(...finals.map((id, i) => h("div", { class: "rv-ph" }, [
+        h("img", { src: photoUrl(id), alt: "" }),
+        i === 0 ? h("span", { class: "cover", text: "الغلاف" }) : null,
+        h("button", { type: "button", text: "إزالة", onclick: () => { finals.splice(i, 1); drawFinals(); } })
+      ])));
+      if (finals.length < 4) {
+        const drop = h("label", { class: "rv-drop" }, [h("span", { text: busy ? "جارٍ الرفع…" : "＋ ارفع الصور المعدّلة" })]);
+        drop.addEventListener("click", () => fileInput.click());
+        drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("drag"); });
+        drop.addEventListener("dragleave", () => drop.classList.remove("drag"));
+        drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("drag"); addFinals(e.dataTransfer.files); });
+        finalsGrid.append(drop);
+      }
+      publishBtn.disabled = !finals.length || busy;
+    }
+    async function addFinals(files) {
+      const list = Array.from(files || []).filter((f) => f.type.startsWith("image/")).slice(0, 4 - finals.length);
+      if (!list.length) return;
+      busy = true; drawFinals();
+      try { for (const f of list) finals.push(await uploadFinal(f)); }
+      catch (e) { toast(e.code === "too_large" ? "الصورة أكبر من 8MB" : e.code === "unsupported_type" ? "استخدم JPG أو PNG أو WEBP" : "تعذّر رفع الصورة"); }
+      finally { busy = false; drawFinals(); }
+    }
+    fileInput.addEventListener("change", () => { addFinals(fileInput.files); fileInput.value = ""; });
+
+    publishBtn.addEventListener("click", async () => {
+      if (!finals.length) return;
+      publishBtn.disabled = true;
+      try {
+        await api("POST", "/api/admin/dresses/" + encodeURIComponent(d.id) + "/approve", { photos: finals });
+        toast("تم نشر \"" + d.title + "\" ✅");
+        loaded.overview = false; loaded.dresses = false;
+        loadReviews();
+      } catch (e) { publishBtn.disabled = false; fail(e); }
+    });
+    const rejectBtn = h("button", { class: "btn danger", type: "button", text: "رفض مع ملاحظة", onclick: async () => {
+      const note = prompt("سبب الرفض — رح يظهر لصاحبة الإعلان:", "الصور مش واضحة، ارفعي صور للفستان كامل بضوء النهار.");
+      if (!note || !note.trim()) return;
+      try {
+        await api("POST", "/api/admin/dresses/" + encodeURIComponent(d.id) + "/reject", { note: note.trim() });
+        toast("تم إرجاع الإعلان لصاحبته");
+        loaded.dresses = false;
+        loadReviews();
+      } catch (e) { fail(e); }
+    } });
+
+    const rawGrid = h("div", { class: "rv-photos" }, d.rawPhotos.map((id, i) => h("div", { class: "rv-ph" }, [
+      h("img", { src: photoUrl(id), alt: "", loading: "lazy" }),
+      h("a", { href: photoUrl(id), download: "dolab-" + d.title.replace(/\s+/g, "-") + "-" + (i + 1) + id.slice(id.lastIndexOf(".")), text: "تنزيل" })
+    ])));
+    const price = [d.rent ? fmt(d.rent) + " ر.س / ليلة" : "", d.deposit ? "تأمين " + fmt(d.deposit) : "", d.sale ? "بيع " + fmt(d.sale) + " ر.س" : ""].filter(Boolean);
+    const hex = d.colorHex || COLOR_HEX[d.color];
+
+    drawFinals();
+    box.append(...[
+      h("div", { class: "rv-head" }, [
+        h("div", null, [
+          h("h2", { text: d.title }),
+          h("div", { class: "rv-meta" }, [
+            h("span", { text: d.ownerName }), h("span", { class: "u-mail", text: d.ownerEmail }),
+            h("span", { text: "أُرسل " + ago(d.submittedAt) }),
+            d.wasPublished ? h("span", { class: "badge gold", text: "تعديل صور لإعلان منشور" }) : h("span", { class: "badge ok", text: "إعلان جديد" })
+          ])
+        ])
+      ]),
+      h("div", { class: "rv-facts" }, [
+        h("span", { text: MODES[d.mode] }), ...price.map((p) => h("span", { class: "num", text: p })),
+        h("span", { text: d.size }), h("span", { text: d.occasion }), h("span", { text: d.condition }), h("span", { text: d.city }),
+        h("span", null, [hex ? h("i", { style: "background:" + hex }) : null, d.color + (d.colorHex ? " · " + d.colorHex : "")]),
+        d.phone ? h("span", { class: "num", style: "direction:ltr", text: d.phone }) : null
+      ]),
+      d.desc ? h("p", { class: "rv-desc", text: d.desc }) : null,
+      h("div", { class: "rv-cols" }, [
+        h("div", { class: "rv-box" }, [
+          h("h3", null, ["١ · الصور الأصلية من صاحبة الإعلان", h("button", { class: "linkbtn", type: "button", text: "تنزيل الكل", onclick: () => downloadAll(d.rawPhotos, d.title) })]),
+          rawGrid
+        ]),
+        h("div", { class: "rv-box" }, [
+          h("h3", null, ["٢ · الصور النهائية للنشر", finalsCount]),
+          finalsGrid, fileInput,
+          h("div", { style: "display:flex;flex-wrap:wrap;gap:12px" }, [
+            h("button", { class: "linkbtn", type: "button", text: "استخدم الصور الأصلية كما هي", onclick: () => { finals = d.rawPhotos.slice(0, 4); drawFinals(); } }),
+            d.photos.length ? h("button", { class: "linkbtn", type: "button", text: "أبقِ الصور المنشورة حالياً", onclick: () => { finals = d.photos.slice(0, 4); drawFinals(); } }) : null
+          ])
+        ])
+      ]),
+      h("div", { class: "rv-actions" }, [rejectBtn, h("div", { class: "grp" }, [publishBtn])])
+    ].filter(Boolean));
+    return box;
+  }
+
+  const LOADERS = { overview: loadOverview, reviews: loadReviews, users: loadUsers, dresses: loadDressesTab, fields: loadFields };
 
   // ---------- boot ----------
   (async function boot() {
@@ -681,7 +861,10 @@ tbody tr.click:hover td { background: var(--gold-soft); }
     $("#who").textContent = me.name;
     $("#refreshBtn").hidden = false;
     $("#main").hidden = false;
-    showTab("overview");
+    // ألوان القائمة لعرض دائرة اللون في الطلبات، وعدد الطلبات المعلّقة على التبويب
+    try { for (const c of (await api("GET", "/api/catalog")).catalog.colors) COLOR_HEX[c.name] = c.hex; } catch (e) {}
+    try { const r = await api("GET", "/api/admin/reviews"); setRevCount(r.reviews.length); showTab(r.reviews.length ? "reviews" : "overview"); }
+    catch (e) { showTab("overview"); }
   })();
 })();
 </script>

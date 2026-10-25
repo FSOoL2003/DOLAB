@@ -26,6 +26,7 @@ router.get("/stats", async (req, res) => {
       (SELECT count(*) FROM dresses WHERE mode IN ('sale', 'both'))::int AS sale,
       (SELECT count(*) FROM dresses WHERE status = 'unavailable')::int AS unavailable,
       (SELECT count(*) FROM dresses WHERE hidden)::int AS hidden,
+      (SELECT count(*) FROM dresses WHERE review_status = 'pending')::int AS pending,
       (SELECT count(DISTINCT visitor) FROM events WHERE type = 'visit' AND created_at > now() - interval '7 days')::int AS visitors7d,
       (SELECT count(DISTINCT visitor) FROM events WHERE type = 'visit')::int AS visitors,
       (SELECT count(*) FROM events WHERE type = 'view')::int AS views,
@@ -124,7 +125,8 @@ router.patch("/users/:id", async (req, res) => {
 router.delete("/users/:id", async (req, res) => {
   const u = await targetUser(req, res);
   if (!u) return;
-  const files = await rows("SELECT id FROM uploads WHERE owner_id = $1", [u.id]);
+  // صور المستخدم + الصور النهائية التي رفعها المشرف لإعلاناته
+  const files = await rows("SELECT id FROM uploads WHERE owner_id = $1 OR dress_id IN (SELECT id FROM dresses WHERE owner_id = $1)", [u.id]);
   await pool.query("DELETE FROM users WHERE id = $1", [u.id]);
   await removeFiles(files.map((f) => f.id));
   res.json({ ok: true });
@@ -141,7 +143,8 @@ router.get("/dresses", async (req, res) => {
     dresses: list.map((d) => ({
       id: d.id, title: d.title, mode: d.mode, rent: d.rent, sale: d.sale, deposit: d.deposit,
       size: d.size, occasion: d.occasion, condition: d.condition, city: d.city, color: d.color,
-      phone: d.phone, photo: d.photos[0] || null, status: d.status, hidden: d.hidden,
+      phone: d.phone, photo: d.photos[0] || (d.raw_photos || [])[0] || null, status: d.status, hidden: d.hidden,
+      reviewStatus: d.review_status,
       owner: String(d.owner_id), ownerName: d.owner_name, ownerEmail: d.owner_email, ownerBanned: d.owner_banned,
       views: d.views, contacts: d.contacts, createdAt: ms(d.created_at),
     })),
@@ -152,6 +155,73 @@ router.patch("/dresses/:id", async (req, res) => {
   const hidden = (req.body || {}).hidden;
   if (typeof hidden !== "boolean") return res.status(400).json({ error: "validation" });
   const { rowCount } = await pool.query("UPDATE dresses SET hidden = $1 WHERE id = $2", [hidden, req.params.id]);
+  if (!rowCount) return res.status(404).json({ error: "not_found" });
+  res.json({ ok: true });
+});
+
+// ---------- طلبات النشر ----------
+// صاحبة الإعلان ترفع صوراً خاماً؛ المشرف ينزّلها ويجهّزها ثم يرفع النهائية وينشر
+router.get("/reviews", async (req, res) => {
+  const list = await rows(`SELECT d.*, u.name AS owner_name, u.email AS owner_email
+    FROM dresses d JOIN users u ON u.id = d.owner_id
+    WHERE d.review_status = 'pending' ORDER BY d.submitted_at NULLS LAST, d.created_at`);
+  res.json({
+    reviews: list.map((d) => ({
+      id: d.id, title: d.title, mode: d.mode, rent: d.rent, deposit: d.deposit, sale: d.sale,
+      size: d.size, occasion: d.occasion, condition: d.condition, city: d.city, color: d.color, colorHex: d.color_hex,
+      desc: d.description, phone: d.phone, rawPhotos: d.raw_photos || [], photos: d.photos || [],
+      owner: String(d.owner_id), ownerName: d.owner_name, ownerEmail: d.owner_email,
+      // سبق نشره = تعديل على إعلان منشور، لا إعلان جديد
+      wasPublished: (d.photos || []).length > 0,
+      submittedAt: ms(d.submitted_at || d.created_at), createdAt: ms(d.created_at),
+    })),
+  });
+});
+
+router.post("/dresses/:id/approve", async (req, res) => {
+  const photos = (req.body || {}).photos;
+  if (!Array.isArray(photos) || !photos.length || photos.length > 4 || !photos.every((p) => typeof p === "string") || new Set(photos).size !== photos.length) {
+    return res.status(400).json({ error: "validation" });
+  }
+  let dropped = [];
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows: [d] } = await client.query("SELECT photos, raw_photos FROM dresses WHERE id = $1 FOR UPDATE", [req.params.id]);
+    if (!d) { await client.query("ROLLBACK"); return res.status(404).json({ error: "not_found" }); }
+    const raw = d.raw_photos || [], old = d.photos || [];
+    // المسموح: الصور الخام أو النهائية الحالية، أو صور جديدة رفعها المشرف ولم تُربط بعد
+    const fresh = photos.filter((p) => !raw.includes(p) && !old.includes(p));
+    if (fresh.length) {
+      const { rows: ok } = await client.query("SELECT id FROM uploads WHERE owner_id = $1 AND dress_id IS NULL AND id = ANY($2)", [req.user.id, fresh]);
+      if (ok.length !== fresh.length) { await client.query("ROLLBACK"); return res.status(400).json({ error: "bad_photos" }); }
+      await client.query("UPDATE uploads SET dress_id = $1 WHERE id = ANY($2)", [req.params.id, fresh]);
+    }
+    // الصور النهائية القديمة التي لم تعد مستخدمة (وليست خاماً) تُحذف
+    dropped = old.filter((p) => !photos.includes(p) && !raw.includes(p));
+    if (dropped.length) await client.query("DELETE FROM uploads WHERE id = ANY($1)", [dropped]);
+    await client.query(
+      "UPDATE dresses SET photos = $2, review_status = 'approved', review_note = NULL, reviewed_at = now() WHERE id = $1",
+      [req.params.id, photos]
+    );
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+  await removeFiles(dropped);
+  res.json({ ok: true });
+});
+
+router.post("/dresses/:id/reject", async (req, res) => {
+  const note = String((req.body || {}).note || "").trim().slice(0, 300);
+  if (!note) return res.status(400).json({ error: "validation" });
+  const { rowCount } = await pool.query(
+    "UPDATE dresses SET review_status = 'rejected', review_note = $2 WHERE id = $1 AND review_status = 'pending'",
+    [req.params.id, note]
+  );
   if (!rowCount) return res.status(404).json({ error: "not_found" });
   res.json({ ok: true });
 });
